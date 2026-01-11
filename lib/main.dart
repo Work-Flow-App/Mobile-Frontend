@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_frontend/app.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'app.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const WorkfloowApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
