@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_frontend/controllers/auth/auth_controller.dart';
+import 'package:go_router/go_router.dart'; // Import GoRouter
+import 'package:mobile_frontend/models/auth/auth_state.dart';
+import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/floow_logo.dart';
-import 'signup_screen.dart';
-import '../dashboard/responsive_dashboard.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,11 +15,32 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
-  bool loading = false;
 
   @override
   Widget build(BuildContext context) {
+    // 1. Explicitly cast the watch to AuthState
+    final AuthState authState = ref.watch(authNotifierProvider);
+
+    // 2. Add <AuthState> to ref.listen to fix the "Object" error
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      // Now 'next' is correctly recognized as AuthState
+      if (next.status == AuthStatus.unauthenticated &&
+          next.errorMessage != null) {
+        if (next.errorMessage!.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.errorMessage!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    });
+
+    final isLoading = authState.status == AuthStatus.loading;
+
     return Scaffold(
+      // ... (Rest of your UI code remains exactly the same)
       body: Center(
         child: Container(
           padding: const EdgeInsets.all(24),
@@ -28,86 +49,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // --- CENTERED LOGO ---
                 const FloowLogo(
                   isAppBar: false,
-                  textColor: Colors.black, // Dark text for white background
-                  iconSize: 50, // Larger icon
-                  fontSize: 32, // Larger text
+                  textColor: Colors.black,
+                  iconSize: 50,
+                  fontSize: 32,
                 ),
                 const SizedBox(height: 40),
-
                 Text("Login", style: Theme.of(context).textTheme.displayLarge),
                 const SizedBox(height: 24),
-
                 TextField(
                   controller: usernameController,
                   decoration: const InputDecoration(labelText: "Username"),
+                  enabled: !isLoading,
                 ),
                 const SizedBox(height: 12),
-
                 TextField(
                   controller: passwordController,
                   decoration: const InputDecoration(labelText: "Password"),
                   obscureText: true,
+                  enabled: !isLoading,
                 ),
                 const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: loading
+                    onPressed: isLoading
                         ? null
-                        : () async {
-                            setState(() => loading = true);
-                            try {
-                              final response = await ref.read(
-                                authControllerProvider({
-                                  "type": "login",
-                                  "username": usernameController.text,
-                                  "password": passwordController.text,
-                                }),
-                              );
-
-                              if (response.accessToken.isNotEmpty) {
-                                if (context.mounted) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ResponsiveDashboard(),
-                                    ),
-                                  );
-                                }
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(response.errorMessage),
-                                    ),
-                                  );
-                                }
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Login failed: $e")),
+                        : () {
+                            ref
+                                .read(authNotifierProvider.notifier)
+                                .login(
+                                  usernameController.text,
+                                  passwordController.text,
                                 );
-                              }
-                            }
-                            setState(() => loading = false);
                           },
-                    child: loading
+                    child: isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text("Login"),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignupScreen()),
-                  ),
+                  onPressed: () => context.push('/signup'),
                   child: const Text("Don't have an account? Sign up"),
                 ),
               ],

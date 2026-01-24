@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_frontend/controllers/auth/auth_controller.dart';
+import 'package:go_router/go_router.dart';
+import 'package:mobile_frontend/models/auth/auth_state.dart';
+import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/floow_logo.dart';
-import '../dashboard/responsive_dashboard.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -12,18 +13,48 @@ class SignupScreen extends ConsumerStatefulWidget {
 }
 
 class _SignupScreenState extends ConsumerState<SignupScreen> {
+  // Controllers
   final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-  // Role State
+  // Role Selection State
   String selectedRole = 'WORKER';
   final List<String> roles = ['WORKER', 'CLIENT', 'COMPANY', 'ADMIN'];
 
-  bool loading = false;
+  @override
+  void dispose() {
+    usernameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // 1. Watch the auth state for loading indicators
+    final AuthState authState = ref.watch(authNotifierProvider);
+
+    // 2. Listen for errors or status changes
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (next.status == AuthStatus.unauthenticated &&
+          next.errorMessage != null) {
+        if (next.errorMessage!.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(next.errorMessage!),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+
+      // Note: Success redirection is handled automatically by the GoRouter
+      // redirect logic in app_router.dart (status == authenticated -> dashboard)
+    });
+
+    final isLoading = authState.status == AuthStatus.loading;
+
     return Scaffold(
       appBar: AppBar(title: const Text("Signup")),
       body: Center(
@@ -34,7 +65,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // --- CENTERED LOGO ---
+                // --- LOGO ---
                 const FloowLogo(
                   isAppBar: false,
                   textColor: Colors.black,
@@ -49,15 +80,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // --- FORM FIELDS ---
                 TextField(
                   controller: usernameController,
                   decoration: const InputDecoration(labelText: "Username"),
+                  enabled: !isLoading,
                 ),
                 const SizedBox(height: 12),
 
                 TextField(
                   controller: emailController,
                   decoration: const InputDecoration(labelText: "Email"),
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !isLoading,
                 ),
                 const SizedBox(height: 12),
 
@@ -65,6 +100,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   controller: passwordController,
                   decoration: const InputDecoration(labelText: "Password"),
                   obscureText: true,
+                  enabled: !isLoading,
                 ),
                 const SizedBox(height: 12),
 
@@ -82,62 +118,63 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   items: roles.map((role) {
                     return DropdownMenuItem(value: role, child: Text(role));
                   }).toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => selectedRole = value);
-                  },
+                  onChanged: isLoading
+                      ? null
+                      : (value) {
+                          if (value != null)
+                            setState(() => selectedRole = value);
+                        },
                 ),
 
                 const SizedBox(height: 24),
+
+                // --- SIGNUP BUTTON ---
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: loading
+                    onPressed: isLoading
                         ? null
-                        : () async {
-                            setState(() => loading = true);
-                            try {
-                              final response = await ref.read(
-                                authControllerProvider({
-                                  "type": "signup",
-                                  "username": usernameController.text,
-                                  "email": emailController.text,
-                                  "password": passwordController.text,
-                                  "role": selectedRole, // Sending selected role
-                                }),
+                        : () {
+                            // Basic Validation
+                            if (usernameController.text.isEmpty ||
+                                passwordController.text.isEmpty ||
+                                emailController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Please fill all fields"),
+                                ),
                               );
-
-                              if (response.accessToken.isNotEmpty) {
-                                if (context.mounted) {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ResponsiveDashboard(),
-                                    ),
-                                  );
-                                }
-                              } else {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(response.errorMessage),
-                                    ),
-                                  );
-                                }
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Signup failed: $e")),
-                                );
-                              }
+                              return;
                             }
-                            setState(() => loading = false);
+
+                            // Trigger Signup
+                            ref
+                                .read(authNotifierProvider.notifier)
+                                .signup(
+                                  usernameController.text,
+                                  emailController.text,
+                                  passwordController.text,
+                                  selectedRole,
+                                );
                           },
-                    child: loading
+                    child: isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text("Signup"),
                   ),
+                ),
+
+                // --- LOGIN LINK ---
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    // Navigate back to Login
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/login');
+                    }
+                  },
+                  child: const Text("Already have an account? Login"),
                 ),
               ],
             ),

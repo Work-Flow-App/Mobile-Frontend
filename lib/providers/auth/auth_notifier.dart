@@ -3,9 +3,9 @@ import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/services/auth/auth_service.dart';
 import 'package:mobile_frontend/services/storage/storage_service.dart';
 
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
-  ref,
-) {
+// FIX: Explicitly add 'StateNotifierProvider<AuthNotifier, AuthState>' before the variable name
+final StateNotifierProvider<AuthNotifier, AuthState> authNotifierProvider = 
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(
     ref.read(authServiceProvider),
     ref.read(storageServiceProvider),
@@ -36,8 +36,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final response = await _authService.login(username, password);
 
-      // Assume Mock API returns a role, or we derive it
-      // For this example, let's say username 'admin' gets ADMIN role
       String role = username.toLowerCase().contains('admin')
           ? 'ADMIN'
           : 'WORKER';
