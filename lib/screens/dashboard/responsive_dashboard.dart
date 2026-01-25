@@ -54,8 +54,26 @@ class ResponsiveDashboard extends ConsumerWidget {
               selected: true,
               onTap: () => Navigator.pop(context),
             ),
+            ListTile(
+              leading: const Icon(Icons.inventory_2_outlined),
+              title: const Text('Asset Management'),
+              onTap: () {
+                Navigator.pop(context);
+                // In a real app, you might use context.push('/assets');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Asset Management coming soon!")),
+                );
+              },
+            ),
+             ListTile(
+                leading: const Icon(Icons.settings_outlined),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
             
-            // 2. Hide Restricted Menu Items for Workers
+/*             // 2. Hide Restricted Menu Items for Workers
             if (isAdmin) ...[
               ListTile(
                 leading: const Icon(Icons.inventory_2_outlined),
@@ -63,7 +81,7 @@ class ResponsiveDashboard extends ConsumerWidget {
                 onTap: () {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Asset Management (Admin Only)")),
+                    const SnackBar(content: Text("Asset Management")),
                   );
                 },
               ),
@@ -74,7 +92,7 @@ class ResponsiveDashboard extends ConsumerWidget {
                   Navigator.pop(context);
                 },
               ),
-            ],
+            ], */
 
             const Divider(),
             ListTile(
