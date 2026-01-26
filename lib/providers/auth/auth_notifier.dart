@@ -1,16 +1,17 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/services/auth/auth_service.dart';
 import 'package:mobile_frontend/services/storage/storage_service.dart';
 
-// FIX: Explicitly add 'StateNotifierProvider<AuthNotifier, AuthState>' before the variable name
-final StateNotifierProvider<AuthNotifier, AuthState> authNotifierProvider = 
+// Explicit type definition to prevent circularity error
+final StateNotifierProvider<AuthNotifier, AuthState> authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(
-    ref.read(authServiceProvider),
-    ref.read(storageServiceProvider),
-  );
-});
+      return AuthNotifier(
+        ref.read(authServiceProvider),
+        ref.read(storageServiceProvider),
+      );
+    });
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
@@ -25,6 +26,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final role = await _storage.getUserRole();
 
     if (token != null && token.isNotEmpty) {
+      // Optional: Check if token is expired client-side
+      if (JwtDecoder.isExpired(token)) {
+        await logout();
+        return;
+      }
       state = state.copyWith(status: AuthStatus.authenticated, role: role);
     } else {
       state = state.copyWith(status: AuthStatus.unauthenticated);
@@ -34,23 +40,38 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> login(String username, String password) async {
     state = state.copyWith(status: AuthStatus.loading);
     try {
+      // 1. Call API
       final response = await _authService.login(username, password);
 
-      String role = username.toLowerCase().contains('admin')
-          ? 'ADMIN'
-          : 'WORKER';
+      // 2. Decode Token to get Role
+      // The API returns "ROLE_WORKER" or "ROLE_ADMIN" inside the token
+      Map<String, dynamic> decodedToken = JwtDecoder.decode(
+        response.accessToken,
+      );
 
+      String rawRole = decodedToken['role'] ?? 'WORKER';
+
+      // 3. Normalize Role (Remove 'ROLE_' prefix to match your app logic)
+      // "ROLE_WORKER" -> "WORKER"
+      // "ROLE_ADMIN"  -> "ADMIN"
+      String normalizedRole = rawRole.replaceFirst('ROLE_', '');
+
+      // 4. Save to Secure Storage
       await _storage.saveAuthData(
         accessToken: response.accessToken,
         refreshToken: response.refreshToken,
-        role: role,
+        role: normalizedRole,
       );
 
-      state = state.copyWith(status: AuthStatus.authenticated, role: role);
+      // 5. Update UI State
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        role: normalizedRole,
+      );
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
-        errorMessage: e.toString(),
+        errorMessage: e.toString().replaceAll("Exception: ", ""),
       );
     }
   }
