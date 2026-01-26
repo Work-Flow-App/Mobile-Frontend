@@ -7,8 +7,8 @@ import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
 import 'job_list_view.dart';
 
-class ResponsiveDashboard extends ConsumerWidget {
-  const ResponsiveDashboard({super.key});
+class HomeDashboard extends ConsumerWidget {
+  const HomeDashboard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,7 +22,6 @@ class ResponsiveDashboard extends ConsumerWidget {
       appBar: AppBar(
         title: const Text("My Jobs"),
         actions: const [
-          // FIX: Pass White color for AppBar usage
           Padding(
             padding: EdgeInsets.only(right: 16.0),
             child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
@@ -56,7 +55,6 @@ class ResponsiveDashboard extends ConsumerWidget {
               title: const Text('Asset Management'),
               onTap: () {
                 Navigator.pop(context);
-                // In a real app, you might use context.push('/assets');
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text("Asset Management coming soon!"),
@@ -71,27 +69,6 @@ class ResponsiveDashboard extends ConsumerWidget {
                 Navigator.pop(context);
               },
             ),
-
-            /*             // 2. Hide Restricted Menu Items for Workers
-            if (isAdmin) ...[
-              ListTile(
-                leading: const Icon(Icons.inventory_2_outlined),
-                title: const Text('Asset Management'),
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Asset Management")),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.settings_outlined),
-                title: const Text('Settings'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ], */
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
