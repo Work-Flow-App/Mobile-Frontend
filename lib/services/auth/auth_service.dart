@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/auth/auth_model.dart';
@@ -13,26 +14,53 @@ class AuthService {
   AuthService(this._dio);
 
   Future<AuthResponse> login(String username, String password) async {
-    // REAL API CALL:
-    // final response = await _dio.post('/auth/login', data: {'username': username, 'password': password});
-    // return AuthResponse.fromJson(response.data);
+    try {
+      final response = await _dio.post(
+        '/auth/login',
+        data: {'userName': username, 'password': password},
+      );
 
-    // MOCK SIMULATION:
-    await Future.delayed(const Duration(seconds: 1));
-    if (username == 'fail') throw Exception("Invalid credentials");
+      // --- FIX 1: Ensure data is a Map ---
+      final data = response.data;
 
-    return AuthResponse(
-      accessToken: "mock_access_token_123",
-      refreshToken: "mock_refresh_token_456",
-      tokenType: "Bearer",
-      expiresIn: 3600,
-      errorMessage: "",
-    );
+      // If Dio returns a String (sometimes happens), decode it manually
+      final Map<String, dynamic> jsonData = (data is String)
+          ? jsonDecode(data)
+          : data;
+
+      return AuthResponse.fromJson(jsonData);
+    } on DioException catch (e) {
+      // --- FIX 2: Safely handle Error Responses ---
+      String errorMessage = 'Login failed. Please try again.';
+
+      if (e.response != null && e.response?.data != null) {
+        final errorData = e.response?.data;
+
+        // If errorData is a Map (standard JSON error), get 'message'
+        if (errorData is Map<String, dynamic>) {
+          errorMessage =
+              errorData['message'] ?? errorData['error'] ?? errorMessage;
+        }
+        // If errorData is just a String (plain text error from server)
+        else if (errorData is String) {
+          errorMessage = errorData;
+        }
+      }
+
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception("An unexpected error occurred: $e");
+    }
   }
 
-  Future<AuthResponse> signup(String username, String email, String password) async {
-     await Future.delayed(const Duration(seconds: 1));
-     return AuthResponse(
+  // Keep signup as mock or implement similarly if you have the endpoint
+  Future<AuthResponse> signup(
+    String username,
+    String email,
+    String password,
+  ) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return AuthResponse(
       accessToken: "mock_access_token_signup",
       refreshToken: "mock_refresh_token_signup",
       tokenType: "Bearer",
