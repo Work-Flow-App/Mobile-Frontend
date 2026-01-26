@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
+import 'package:mobile_frontend/providers/job/job_provider.dart';
+import 'package:mobile_frontend/screens/dashboard/job_steps_screen.dart';
 import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
 import 'job_list_view.dart';
@@ -10,6 +12,8 @@ class HomeDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final allJobsAsync = ref.watch(jobsFutureProvider);
+
     // 1. Get User Role
     final authState = ref.watch(authNotifierProvider);
     final isAdmin = authState.role == 'ADMIN';
@@ -77,13 +81,76 @@ class HomeDashboard extends ConsumerWidget {
           ],
         ),
       ),
-      // 2. Simplified Body: Just FilterBar + List
-      body: const Column(
-        children: [
-          FilterBar(),
-          Expanded(child: JobListView()),
-        ],
+      body: allJobsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Error: $err')),
+        data: (allJobs) {
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth > 700) {
+                return const TabletSplitView();
+              } else {
+                return const MobileJobListView();
+              }
+            },
+          );
+        },
       ),
+    );
+  }
+}
+
+class MobileJobListView extends StatelessWidget {
+  const MobileJobListView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: const [
+        FilterBar(),
+        Expanded(child: JobListView()),
+      ],
+    );
+  }
+}
+
+class TabletSplitView extends ConsumerWidget {
+  const TabletSplitView({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedJobId = ref.watch(selectedJobIdProvider);
+    final allJobs = ref.watch(jobsFutureProvider).value ?? [];
+
+    Widget detailView;
+    if (selectedJobId == null) {
+      detailView = const Center(
+        child: Text(
+          "Select a job to view details.",
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    } else {
+      final selectedJob = allJobs.firstWhere((j) => j.id == selectedJobId);
+      detailView = JobStepsScreen(job: selectedJob, isEmbedded: true);
+    }
+
+    return Row(
+      children: [
+        const SizedBox(
+          width: 350,
+          child: Column(
+            children: [
+              FilterBar(),
+              Expanded(child: JobListView(isTablet: true)),
+            ],
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(
+          child: Container(color: Colors.grey[50], child: detailView),
+        ),
+      ],
     );
   }
 }

@@ -92,10 +92,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
     commentController.clear();
   }
 
-  // --- NEW: Attachment Modal ---
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
+      constraints: const BoxConstraints(maxWidth: 600), // constrain modal width
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -151,188 +151,255 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
           onPressed: () => Navigator.pop(context, step),
         ),
         actions: const [
-          // FIX: Pass White color
           Padding(
             padding: EdgeInsets.only(right: 16.0),
             child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
           ),
         ],
       ),
-      body: Column(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Breakpoint for Tablet/Desktop (Split View)
+          if (constraints.maxWidth > 800) {
+            return _buildSplitLayout(canEdit);
+          } else {
+            return _buildMobileLayout(canEdit);
+          }
+        },
+      ),
+    );
+  }
+
+  // --- LAYOUTS ---
+
+  Widget _buildMobileLayout(bool canEdit) {
+    return Column(
+      children: [
+        // Info Section
+        _buildInfoSection(canEdit),
+        const Divider(height: 1),
+        // Timeline Section (Takes remaining space)
+        Expanded(child: _buildTimelineSection(canEdit)),
+      ],
+    );
+  }
+
+  Widget _buildSplitLayout(bool canEdit) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left Side: Info (Fixed Width or Flex)
+        SizedBox(
+          width: 400,
+          child: SingleChildScrollView(child: _buildInfoSection(canEdit)),
+        ),
+        const VerticalDivider(width: 1),
+        // Right Side: Timeline (Expanded)
+        Expanded(
+          child: Container(
+            color: Colors.grey[50],
+            child: _buildTimelineSection(canEdit),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- SECTIONS ---
+
+  Widget _buildInfoSection(bool canEdit) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- STEP INFO HEADER ---
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  step.name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.displayLarge?.copyWith(fontSize: 28),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Status: ${step.status.name}",
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  step.description,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 16),
-
-                // --- ACTION BUTTONS (RBAC Controlled) ---
-                if (canEdit) ...[
-                  if (step.status == StepStatus.NOT_STARTED)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _startStep,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text("Start Step"),
-                      ),
-                    )
-                  else if (step.status == StepStatus.STARTED)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _markAsCompleted,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade700,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text("Mark as Completed"),
-                      ),
-                    ),
-                ] else ...[
-                  // Read Only Message
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.lock_outline, color: Colors.grey),
-                        SizedBox(width: 8),
-                        Text(
-                          "View Only (Not Assigned)",
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          Text(
+            step.name,
+            style: Theme.of(
+              context,
+            ).textTheme.displayLarge?.copyWith(fontSize: 28),
           ),
-          const Divider(height: 1),
-
-          // --- ACTIVITY TIMELINE ---
-          Expanded(
-            child: Container(
-              color: Colors.grey[50],
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                itemCount: step.mockTimelineEvents.length,
-                itemBuilder: (context, index) {
-                  final event = step.mockTimelineEvents[index];
-                  final isLast = index == step.mockTimelineEvents.length - 1;
-                  return _buildTimelineItem(event, isLast);
-                },
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: step.status == StepStatus.COMPLETED
+                  ? Colors.green.shade100
+                  : Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              "Status: ${step.status.name}",
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: step.status == StepStatus.COMPLETED
+                    ? Colors.green.shade800
+                    : Colors.blue.shade800,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
+          const SizedBox(height: 20),
+          Text(
+            step.description,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
+          ),
+          const SizedBox(height: 32),
 
-          // --- CHAT INPUT AREA ---
-          // Only show input if user has permission to edit
-          if (canEdit)
+          // --- ACTION BUTTONS ---
+          if (canEdit) ...[
+            if (step.status == StepStatus.NOT_STARTED)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _startStep,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text("Start Step"),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              )
+            else if (step.status == StepStatus.STARTED)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _markAsCompleted,
+                  icon: const Icon(Icons.check),
+                  label: const Text("Mark as Completed"),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+          ] else ...[
+            // Read Only Message
             Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    offset: const Offset(0, -2),
-                    blurRadius: 5,
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.lock_outline, color: Colors.grey),
+                  SizedBox(width: 8),
+                  Text(
+                    "View Only (Not Assigned)",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Attachment Button
-                    IconButton(
-                      icon: const Icon(Icons.attach_file, color: Colors.grey),
-                      onPressed: _showAttachmentOptions,
-                    ),
-
-                    // Expanded Text Field
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: TextField(
-                          controller: commentController,
-                          // FIX: Enabling multiline expansion
-                          keyboardType: TextInputType.multiline,
-                          textInputAction: TextInputAction.newline,
-                          minLines: 1,
-                          maxLines: 5, // Grows up to 5 lines, then scrolls
-                          decoration: const InputDecoration(
-                            hintText: "Add a comment...",
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical:
-                                  10, // Adjusted padding for better centering
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 4),
-
-                    // Send Button
-                    IconButton(
-                      icon: Icon(
-                        Icons.send,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                      onPressed: () => _addComment(commentController.text),
-                    ),
-                  ],
-                ),
-              ),
             ),
+          ],
         ],
       ),
     );
   }
 
-  // --- TIMELINE ITEM WIDGET ---
+  Widget _buildTimelineSection(bool canEdit) {
+    return Column(
+      children: [
+        // Timeline Header
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: Colors.grey[200],
+          child: Text(
+            "Activity Timeline",
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
+            ),
+          ),
+        ),
+
+        // List
+        Expanded(
+          child: Container(
+            color: Colors.grey[50],
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              itemCount: step.mockTimelineEvents.length,
+              itemBuilder: (context, index) {
+                final event = step.mockTimelineEvents[index];
+                final isLast = index == step.mockTimelineEvents.length - 1;
+                return _buildTimelineItem(event, isLast);
+              },
+            ),
+          ),
+        ),
+
+        // Input Area
+        if (canEdit)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Colors.grey.shade200)),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.attach_file, color: Colors.grey),
+                    onPressed: _showAttachmentOptions,
+                  ),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: TextField(
+                        controller: commentController,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.newline,
+                        minLines: 1,
+                        maxLines: 5,
+                        decoration: const InputDecoration(
+                          hintText: "Add a comment...",
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () => _addComment(commentController.text),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildTimelineItem(TimelineEvent event, bool isLast) {
     final time = DateFormat.jm().format(event.timestamp);
     return IntrinsicHeight(
@@ -343,7 +410,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: Colors.white,
                 child: const Icon(
                   Icons.person,
                   color: Colors.black54,
@@ -389,7 +456,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                       height: 120,
                       width: 160,
                       decoration: BoxDecoration(
-                        color: Colors.grey[200],
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
@@ -411,15 +478,22 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                     )
                   else
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(12),
+                        // Simulating a chat bubble
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            offset: const Offset(0, 1),
+                            blurRadius: 3,
+                          ),
+                        ],
                       ),
                       child: Text(
                         event.content,
-                        style: const TextStyle(fontSize: 15, height: 1.3),
+                        style: const TextStyle(fontSize: 15, height: 1.4),
                       ),
                     ),
                 ],
