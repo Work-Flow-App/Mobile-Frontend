@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart'; // Import GoRouter
-import 'package:mobile_frontend/models/job/job_model.dart'; // Import Model
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 import '../../widgets/job_card.dart';
 

@@ -6,7 +6,6 @@ import 'package:mobile_frontend/models/job/timeline_model.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
-import 'package:mobile_frontend/widgets/floow_logo.dart';
 
 class StepDetailScreen extends ConsumerStatefulWidget {
   final JobStep step;
