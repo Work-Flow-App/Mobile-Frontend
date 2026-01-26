@@ -7,7 +7,7 @@ import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/screens/auth/login_screen.dart';
 import 'package:mobile_frontend/screens/auth/signup_screen.dart';
 import 'package:mobile_frontend/screens/dashboard/job_steps_screen.dart';
-import 'package:mobile_frontend/screens/dashboard/responsive_dashboard.dart';
+import 'package:mobile_frontend/screens/dashboard/home_dashboard.dart';
 // import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart'; // Uncomment if you add route for this
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -70,7 +70,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/dashboard',
         name: 'dashboard',
-        builder: (context, state) => const ResponsiveDashboard(),
+        builder: (context, state) => const HomeDashboard(),
       ),
 
       GoRoute(
