@@ -65,19 +65,24 @@ class JobService {
     }
   }
 
-  // POST /worker/job-workflow-steps/{id}/attachments [cite: 25]
   Future<void> addAttachment(int stepId, String filePath) async {
     try {
       String fileName = filePath.split('/').last;
 
-      // Create FormData for file upload
+      // Create FormData
       FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: fileName,
+          // The API expects multipart/form-data which Dio handles automatically,
+          // but specifying the sub-type helps with some backends.
+        ),
       });
 
       await _dio.post(
         '/worker/job-workflow-steps/$stepId/attachments',
         data: formData,
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
       );
     } catch (e) {
       throw Exception('Failed to upload attachment: $e');

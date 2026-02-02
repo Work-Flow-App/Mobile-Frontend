@@ -6,6 +6,8 @@ import 'package:mobile_frontend/models/job/timeline_model.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 
 enum TimelineFilter { all, comments, attachments }
 
@@ -111,17 +113,25 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     }
   }
 
-  Future<void> _addAttachmentMock(String mockFilePath) async {
-    // In production, use file_picker to get actual path.
-    // Logic: User picks file -> App gets path -> Service uploads -> Refresh timeline [cite: 25]
+  Future<void> _uploadFile(String? path) async {
+    if (path == null) return;
+
+    setState(() => isLoadingAction = true);
     try {
-      // await ref.read(jobServiceProvider).addAttachment(step.id, mockFilePath);
-      // ref.refresh(stepTimelineProvider(step.id));
-      _addComment("Simulated Attachment Upload: $mockFilePath");
+      await ref.read(jobServiceProvider).addAttachment(step.id, path);
+
+      // Refresh the timeline to show the new attachment
+      ref.refresh(stepTimelineProvider(step.id));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("File uploaded successfully!")),
+      );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+    } finally {
+      setState(() => isLoadingAction = false);
     }
   }
 
@@ -138,17 +148,41 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.blue),
                 title: const Text('Take Photo'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  _addAttachmentMock("/camera/img.jpg");
+                  final picker = ImagePicker();
+                  final XFile? photo = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (photo != null) _uploadFile(photo.path);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.purple),
-                title: const Text('Gallery'),
-                onTap: () {
+                title: const Text('Upload Image from Gallery'),
+                onTap: () async {
                   Navigator.pop(context);
-                  _addAttachmentMock("/gallery/img.jpg");
+                  final picker = ImagePicker();
+                  final XFile? image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (image != null) _uploadFile(image.path);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.insert_drive_file,
+                  color: Colors.orange,
+                ),
+                title: const Text('Upload Document (PDF/Doc)'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  FilePickerResult? result = await FilePicker.platform
+                      .pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['pdf', 'doc', 'docx', 'txt'],
+                      );
+                  if (result != null) _uploadFile(result.files.single.path);
                 },
               ),
             ],
