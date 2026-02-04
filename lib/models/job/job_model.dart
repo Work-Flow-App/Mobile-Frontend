@@ -3,13 +3,15 @@ import 'timeline_model.dart';
 
 // --- Job Enums & Extensions ---
 
-enum JobStatus { NOT_STARTED, ONGOING, COMPLETED, PENDING }
+enum JobStatus { NOT_STARTED, STARTED, ONGOING, COMPLETED, PENDING }
 
 extension JobStatusExtension on JobStatus {
   String get label {
     switch (this) {
       case JobStatus.NOT_STARTED:
         return 'Not Started';
+      case JobStatus.STARTED:
+        return 'Started';
       case JobStatus.ONGOING:
         return 'Ongoing';
       case JobStatus.COMPLETED:
@@ -21,6 +23,7 @@ extension JobStatusExtension on JobStatus {
 
   Color get color {
     switch (this) {
+      case JobStatus.STARTED:
       case JobStatus.ONGOING:
         return Colors.blue.shade700;
       case JobStatus.COMPLETED:
@@ -34,6 +37,7 @@ extension JobStatusExtension on JobStatus {
 
   Color get backgroundColor {
     switch (this) {
+      case JobStatus.STARTED:
       case JobStatus.ONGOING:
         return Colors.blue.withOpacity(0.15);
       case JobStatus.COMPLETED:
@@ -48,10 +52,8 @@ extension JobStatusExtension on JobStatus {
 
 // --- Step Enums & Extensions ---
 
-// 1. Added PENDING to StepStatus
 enum StepStatus { NOT_STARTED, STARTED, COMPLETED, PENDING }
 
-// 2. Created Extension for Step Styling
 extension StepStatusExtension on StepStatus {
   Color get color {
     switch (this) {
@@ -60,9 +62,23 @@ extension StepStatusExtension on StepStatus {
       case StepStatus.STARTED:
         return Colors.blue.shade700;
       case StepStatus.PENDING:
-        return Colors.red.shade700; // Urgent Red
+        return Colors.red.shade700;
       default:
         return Colors.black;
+    }
+  }
+
+  // --- FIX: Added backgroundColor here ---
+  Color get backgroundColor {
+    switch (this) {
+      case StepStatus.COMPLETED:
+        return Colors.green.withOpacity(0.15);
+      case StepStatus.STARTED:
+        return Colors.blue.withOpacity(0.15);
+      case StepStatus.PENDING:
+        return Colors.red.withOpacity(0.15);
+      default:
+        return Colors.grey.withOpacity(0.15);
     }
   }
 
@@ -97,6 +113,22 @@ class JobWorkflow {
     required this.steps,
   });
 
+  factory JobWorkflow.fromJson(Map<String, dynamic> json) {
+    var stepList = json['steps'] as List;
+    // Map API status string to Enum safely
+    JobStatus mappedStatus = JobStatus.values.firstWhere(
+      (e) => e.name == json['status'],
+      orElse: () => JobStatus.NOT_STARTED,
+    );
+
+    return JobWorkflow(
+      id: json['id'],
+      jobId: json['jobId'],
+      status: mappedStatus,
+      steps: stepList.map((i) => JobStep.fromJson(i)).toList(),
+    );
+  }
+
   double get progress {
     if (steps.isEmpty) return 0.0;
     int completed = steps.where((s) => s.status == StepStatus.COMPLETED).length;
@@ -104,7 +136,7 @@ class JobWorkflow {
   }
 
   String get currentStepName {
-    // Priority logic: Pending > Started > Not Started
+    if (steps.isEmpty) return "No steps";
     final activeStep = steps.firstWhere(
       (s) => s.status == StepStatus.PENDING,
       orElse: () => steps.firstWhere(
@@ -126,7 +158,7 @@ class JobStep {
   final int orderIndex;
   final StepStatus status;
   final List<int> assignedWorkerIds;
-  final List<TimelineEvent> mockTimelineEvents;
+  List<TimelineEvent> mockTimelineEvents;
 
   JobStep({
     required this.id,
@@ -137,6 +169,22 @@ class JobStep {
     required this.assignedWorkerIds,
     this.mockTimelineEvents = const [],
   });
+
+  factory JobStep.fromJson(Map<String, dynamic> json) {
+    StepStatus mappedStatus = StepStatus.values.firstWhere(
+      (e) => e.name == json['status'],
+      orElse: () => StepStatus.NOT_STARTED,
+    );
+
+    return JobStep(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'] ?? "",
+      orderIndex: json['orderIndex'],
+      status: mappedStatus,
+      assignedWorkerIds: List<int>.from(json['assignedWorkerIds'] ?? []),
+    );
+  }
 
   bool isAssignedTo(int workerId) => assignedWorkerIds.contains(workerId);
 }

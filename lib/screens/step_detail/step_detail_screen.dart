@@ -6,6 +6,10 @@ import 'package:mobile_frontend/models/job/timeline_model.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+
+enum TimelineFilter { all, comments, attachments }
 
 class StepDetailScreen extends ConsumerStatefulWidget {
   final JobStep step;
@@ -16,10 +20,11 @@ class StepDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<StepDetailScreen> createState() => _StepDetailScreenState();
 }
 
-class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
-    with TickerProviderStateMixin {
+class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   late JobStep step;
   final commentController = TextEditingController();
+  bool isLoadingAction = false;
+  TimelineFilter _currentFilter = TimelineFilter.all; // Filter State
 
   @override
   void initState() {
@@ -33,69 +38,106 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
     super.dispose();
   }
 
-  // --- LOGIC METHODS ---
+  // --- ACTIONS ---
 
-  void _startStep() {
-    setState(() {
-      step = JobStep(
-        id: step.id,
-        name: step.name,
-        description: step.description,
-        orderIndex: step.orderIndex,
-        status: StepStatus.STARTED,
-        assignedWorkerIds: step.assignedWorkerIds,
-        mockTimelineEvents: step.mockTimelineEvents,
-      );
-      step.mockTimelineEvents.add(
-        TimelineEvent(
-          username: "You",
-          timestamp: DateTime.now(),
-          content: "Started this step",
-        ),
-      );
-    });
+  Future<void> _handleRefresh() async {
+    // Refreshes discussion  and global job list [cite: 17]
+    ref.refresh(stepTimelineProvider(step.id));
+    return ref.refresh(jobsFutureProvider);
   }
 
-  void _markAsCompleted() {
-    setState(() {
-      step = JobStep(
-        id: step.id,
-        name: step.name,
-        description: step.description,
-        orderIndex: step.orderIndex,
-        status: StepStatus.COMPLETED,
-        assignedWorkerIds: step.assignedWorkerIds,
-        mockTimelineEvents: step.mockTimelineEvents,
-      );
-      step.mockTimelineEvents.add(
-        TimelineEvent(
-          username: "You",
-          timestamp: DateTime.now(),
-          content: "Marked this step as COMPLETED",
-        ),
-      );
-    });
+  Future<void> _startStep() async {
+    setState(() => isLoadingAction = true);
+    try {
+      await ref.read(jobServiceProvider).startStep(step.id); //
+      // Update local state to reflect change immediately
+      setState(() {
+        // Create new object with updated status to trigger UI rebuild
+        // We reuse properties but change status to STARTED [cite: 20]
+        // Note: In a real app with immutable models, use copyWith
+        step = JobStep(
+          id: step.id,
+          name: step.name,
+          description: step.description,
+          orderIndex: step.orderIndex,
+          status: StepStatus.STARTED,
+          assignedWorkerIds: step.assignedWorkerIds,
+        );
+      });
+      _handleRefresh();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      setState(() => isLoadingAction = false);
+    }
   }
 
-  void _addComment(String text, {bool isAttachment = false}) {
+  Future<void> _markAsCompleted() async {
+    setState(() => isLoadingAction = true);
+    try {
+      await ref.read(jobServiceProvider).completeStep(step.id); //
+      setState(() {
+        step = JobStep(
+          id: step.id,
+          name: step.name,
+          description: step.description,
+          orderIndex: step.orderIndex,
+          status: StepStatus.COMPLETED,
+          assignedWorkerIds: step.assignedWorkerIds,
+        );
+      });
+      _handleRefresh();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    } finally {
+      setState(() => isLoadingAction = false);
+    }
+  }
+
+  Future<void> _addComment(String text) async {
     if (text.trim().isEmpty) return;
-    setState(() {
-      step.mockTimelineEvents.add(
-        TimelineEvent(
-          username: "You",
-          timestamp: DateTime.now(),
-          content: text.trim(),
-          isAttachment: isAttachment,
-        ),
+    try {
+      await ref
+          .read(jobServiceProvider)
+          .addComment(step.id, text.trim()); // [cite: 23]
+      commentController.clear();
+      ref.refresh(stepTimelineProvider(step.id));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
+
+  Future<void> _uploadFile(String? path) async {
+    if (path == null) return;
+
+    setState(() => isLoadingAction = true);
+    try {
+      await ref.read(jobServiceProvider).addAttachment(step.id, path);
+
+      // Refresh the timeline to show the new attachment
+      ref.refresh(stepTimelineProvider(step.id));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("File uploaded successfully!")),
       );
-    });
-    commentController.clear();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+    } finally {
+      setState(() => isLoadingAction = false);
+    }
   }
 
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
-      constraints: const BoxConstraints(maxWidth: 600), // constrain modal width
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -106,25 +148,41 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Colors.blue),
                 title: const Text('Take Photo'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
-                  _addComment("Captured_Photo.jpg", isAttachment: true);
+                  final picker = ImagePicker();
+                  final XFile? photo = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (photo != null) _uploadFile(photo.path);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: Colors.purple),
-                title: const Text('Choose from Gallery'),
-                onTap: () {
+                title: const Text('Upload Image from Gallery'),
+                onTap: () async {
                   Navigator.pop(context);
-                  _addComment("Gallery_Image.jpg", isAttachment: true);
+                  final picker = ImagePicker();
+                  final XFile? image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (image != null) _uploadFile(image.path);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.description, color: Colors.orange),
-                title: const Text('Upload Document'),
-                onTap: () {
+                leading: const Icon(
+                  Icons.insert_drive_file,
+                  color: Colors.orange,
+                ),
+                title: const Text('Upload Document (PDF/Doc)'),
+                onTap: () async {
                   Navigator.pop(context);
-                  _addComment("Document.pdf", isAttachment: true);
+                  FilePickerResult? result = await FilePicker.platform
+                      .pickFiles(
+                        type: FileType.custom,
+                        allowedExtensions: ['pdf', 'doc', 'docx', 'txt'],
+                      );
+                  if (result != null) _uploadFile(result.files.single.path);
                 },
               ),
             ],
@@ -136,7 +194,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    // RBAC & Logic Variables
+    // RBAC Check [cite: 18]
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
     final authState = ref.watch(authNotifierProvider);
     final isAdmin = authState.role == 'ADMIN';
@@ -159,7 +217,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // Breakpoint for Tablet/Desktop (Split View)
           if (constraints.maxWidth > 800) {
             return _buildSplitLayout(canEdit);
           } else {
@@ -171,14 +228,11 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
   }
 
   // --- LAYOUTS ---
-
   Widget _buildMobileLayout(bool canEdit) {
     return Column(
       children: [
-        // Info Section
         _buildInfoSection(canEdit),
         const Divider(height: 1),
-        // Timeline Section (Takes remaining space)
         Expanded(child: _buildTimelineSection(canEdit)),
       ],
     );
@@ -188,13 +242,11 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left Side: Info (Fixed Width or Flex)
         SizedBox(
           width: 400,
           child: SingleChildScrollView(child: _buildInfoSection(canEdit)),
         ),
         const VerticalDivider(width: 1),
-        // Right Side: Timeline (Expanded)
         Expanded(
           child: Container(
             color: Colors.grey[50],
@@ -205,8 +257,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
     );
   }
 
-  // --- SECTIONS ---
-
+  // --- INFO SECTION ---
   Widget _buildInfoSection(bool canEdit) {
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -223,17 +274,13 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: step.status == StepStatus.COMPLETED
-                  ? Colors.green.shade100
-                  : Colors.blue.shade50,
+              color: step.status.backgroundColor,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               "Status: ${step.status.name}",
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: step.status == StepStatus.COMPLETED
-                    ? Colors.green.shade800
-                    : Colors.blue.shade800,
+                color: step.status.color,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -244,10 +291,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
           ),
           const SizedBox(height: 32),
-
-          // --- ACTION BUTTONS ---
           if (canEdit) ...[
-            if (step.status == StepStatus.NOT_STARTED)
+            if (isLoadingAction)
+              const Center(child: CircularProgressIndicator())
+            else if (step.status == StepStatus.NOT_STARTED)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -255,9 +302,9 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                   icon: const Icon(Icons.play_arrow),
                   label: const Text("Start Step"),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.blue.shade700,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
               )
@@ -269,16 +316,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                   icon: const Icon(Icons.check),
                   label: const Text("Mark as Completed"),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.green.shade700,
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
               ),
           ] else ...[
-            // Read Only Message
             Container(
-              width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
@@ -286,7 +331,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.lock_outline, color: Colors.grey),
                   SizedBox(width: 8),
@@ -306,40 +350,92 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
     );
   }
 
+  // --- TIMELINE SECTION ---
   Widget _buildTimelineSection(bool canEdit) {
+    final timelineAsync = ref.watch(stepTimelineProvider(step.id));
+
     return Column(
       children: [
-        // Timeline Header
+        // FILTER HEADER
         Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           color: Colors.grey[200],
-          child: Text(
-            "Activity Timeline",
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.black54,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Activity",
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black54,
+                ),
+              ),
+              // Filter Chips
+              Row(
+                children: [
+                  _buildFilterChip("All", TimelineFilter.all),
+                  const SizedBox(width: 8),
+                  _buildFilterChip("Comments", TimelineFilter.comments),
+                  const SizedBox(width: 8),
+                  _buildFilterChip("Files", TimelineFilter.attachments),
+                ],
+              ),
+            ],
           ),
         ),
 
-        // List
+        // TIMELINE LIST
         Expanded(
           child: Container(
             color: Colors.grey[50],
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              itemCount: step.mockTimelineEvents.length,
-              itemBuilder: (context, index) {
-                final event = step.mockTimelineEvents[index];
-                final isLast = index == step.mockTimelineEvents.length - 1;
-                return _buildTimelineItem(event, isLast);
+            child: timelineAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text("Error: $err")),
+              data: (events) {
+                // APPLY LOCAL FILTER
+                final filteredEvents = events.where((e) {
+                  if (_currentFilter == TimelineFilter.comments)
+                    return e.itemType == TimelineItemType.COMMENT;
+                  if (_currentFilter == TimelineFilter.attachments)
+                    return e.itemType == TimelineItemType.ATTACHMENT;
+                  return true;
+                }).toList();
+
+                if (filteredEvents.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 100),
+                        Center(child: Text("No activity found.")),
+                      ],
+                    ),
+                  );
+                }
+                return RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: filteredEvents.length,
+                    itemBuilder: (context, index) {
+                      return _buildTimelineItem(
+                        filteredEvents[index] as TimelineEvent,
+                        index == filteredEvents.length - 1,
+                      );
+                    },
+                  ),
+                );
               },
             ),
           ),
         ),
 
-        // Input Area
+        // INPUT AREA
         if (canEdit)
           Container(
             decoration: BoxDecoration(
@@ -366,7 +462,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                       child: TextField(
                         controller: commentController,
                         keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
                         minLines: 1,
                         maxLines: 5,
                         decoration: const InputDecoration(
@@ -400,8 +495,40 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
     );
   }
 
+  Widget _buildFilterChip(String label, TimelineFilter filter) {
+    final isSelected = _currentFilter == filter;
+    return InkWell(
+      onTap: () => setState(() => _currentFilter = filter),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue.shade700 : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.blue.shade700 : Colors.grey.shade400,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey.shade700,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTimelineItem(TimelineEvent event, bool isLast) {
-    final time = DateFormat.jm().format(event.timestamp);
+    final time = DateFormat.jm().format(event.createdAt);
+    // Check extension for image display
+    final bool hasImage =
+        event.fileUrl != null &&
+        (event.fileUrl!.toLowerCase().contains('.jpg') ||
+            event.fileUrl!.toLowerCase().contains('.jpeg') ||
+            event.fileUrl!.toLowerCase().contains('.png'));
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +564,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                   Row(
                     children: [
                       Text(
-                        event.username,
+                        event.actorId == 5 ? "You" : "User #${event.actorId}",
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -451,28 +578,85 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                     ],
                   ),
                   const SizedBox(height: 6),
+
                   if (event.isAttachment)
                     Container(
-                      height: 120,
-                      width: 160,
+                      constraints: const BoxConstraints(maxWidth: 250),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.image, color: Colors.grey, size: 40),
-                          const SizedBox(height: 8),
-                          Text(
-                            event.content,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
+                          // Real Image Rendering
+                          if (hasImage)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                event.fileUrl!, // [cite: 30]
+                                fit: BoxFit.cover,
+                                loadingBuilder: (ctx, child, progress) =>
+                                    progress == null
+                                    ? child
+                                    : Container(
+                                        height: 150,
+                                        width: double.infinity,
+                                        color: Colors.grey[100],
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      ),
+                                errorBuilder: (ctx, err, stack) =>
+                                    const SizedBox(
+                                      height: 100,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                              ),
+                            )
+                          else
+                            // File View/Download UI
+                            ListTile(
+                              leading: Icon(
+                                Icons.description,
+                                color: Theme.of(context).primaryColor,
+                              ),
+                              title: Text(
+                                event.content.isNotEmpty
+                                    ? event.content
+                                    : "Attachment",
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: const Text(
+                                "Tap to view",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              onTap: () {
+                                // In a real app, use url_launcher: launchUrl(Uri.parse(event.fileUrl!));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Opening ${event.content}...",
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                          ),
                         ],
                       ),
                     )
@@ -482,7 +666,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen>
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        // Simulating a chat bubble
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.05),
