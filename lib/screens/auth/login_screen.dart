@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/floow_logo.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -68,10 +69,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: Image.asset(
-                      'assets/images/background_grid.jpg',
+                    child:
+                        /* SvgPicture.asset(
+                      'assets/images/test.svg', // Ensure this path matches your assets folder
                       fit: BoxFit.cover,
-                    ),
+                    ), */
+                        Image.asset(
+                          'assets/images/background_grid.jpg',
+                          fit: BoxFit.cover,
+                        ),
+
+                    /* Image.asset(
+                          'assets/images/test.jpg',
+                          fit: BoxFit.cover,
+                        ), */
                   ),
                   // Dark Overlay for contrast
                   Positioned.fill(
@@ -253,24 +264,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.g_mobiledata,
-                                size: 30,
-                                color: Colors.blue,
+                          child:
+                              // Inside the Google Button ElevatedButton child:
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SvgPicture.asset(
+                                    'assets/images/google_logo.svg', // Ensure this path matches your assets folder
+                                    height: 24,
+                                    width: 24,
+                                  ),
+
+                                  const SizedBox(width: 12),
+                                  const Text(
+                                    "Sign in with Google",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 8),
-                              Text(
-                                "Sign in with Google",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ),
 
