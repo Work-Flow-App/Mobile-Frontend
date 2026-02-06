@@ -522,6 +522,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
 
   Widget _buildTimelineItem(TimelineEvent event, bool isLast) {
     final time = DateFormat.jm().format(event.createdAt);
+
+    // Logic to determine what name to display
+    // Use the current worker's ID from your service/provider to label "You"
+    final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
+    final displayName = event.actorId == currentWorkerId
+        ? "You"
+        : "User #${event.actorId}";
+
     // Check extension for image display
     final bool hasImage =
         event.fileUrl != null &&
@@ -564,7 +572,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                   Row(
                     children: [
                       Text(
-                        event.actorId == 5 ? "You" : "User #${event.actorId}",
+                        displayName,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
