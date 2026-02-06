@@ -1,6 +1,3 @@
-import 'dart:math';
-import 'dart:ui'; // Required for PointMode
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,89 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/floow_logo.dart';
-
-class NoisePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Fixed seed to keep the noise static (doesn't dance around)
-    final random = Random(42);
-
-    final paint = Paint()
-      ..color = Colors.white
-          .withOpacity(0.12) // Slightly more visible
-      ..strokeWidth = 1.0
-      ..strokeCap = StrokeCap.round; // Round dots look better for noise
-
-    // SIGNIFICANTLY INCREASED DENSITY
-    // Changed 0.05 to 0.80. This creates thousands more dots.
-    final int count = (size.width * size.height * 0.25).toInt();
-
-    final List<Offset> points = [];
-
-    for (int i = 0; i < count; i++) {
-      final double x = random.nextDouble() * size.width;
-      final double y = random.nextDouble() * size.height;
-      points.add(Offset(x, y));
-    }
-
-    // Draw all points in one batch for performance
-    canvas.drawPoints(PointMode.points, points, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class TechnicalGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridPaint = Paint()
-      ..color = Colors.white
-          .withOpacity(0.25) // INCREASED: Was 0.1. Now much more visible.
-      ..strokeWidth = 1.0;
-
-    final plusPaint = Paint()
-      ..color = Colors.white
-          .withOpacity(0.6) // INCREASED: Was 0.3. Now pops more.
-      ..strokeWidth = 1.5; // INCREASED: Made slightly thicker (was 1.2)
-
-    const double step = 35.0;
-    final random = Random(42);
-
-    // Draw the main grid lines
-    for (double i = 0; i <= size.width; i += step) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
-    }
-    for (double i = 0; i <= size.height; i += step) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
-    }
-
-    // Draw the markers
-    for (double x = 0; x <= size.width; x += step) {
-      for (double y = 0; y <= size.height; y += step) {
-        if (random.nextDouble() < 0.15) {
-          const double length = 10.0;
-
-          // Horizontal
-          canvas.drawLine(
-            Offset(x - length, y),
-            Offset(x + length, y),
-            plusPaint,
-          );
-          // Vertical
-          canvas.drawLine(
-            Offset(x, y - length),
-            Offset(x, y + length),
-            plusPaint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
+import 'package:mobile_frontend/widgets/black_grid.dart'; // <-- NEW
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -141,92 +56,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         backgroundColor: Colors.white,
         body: Stack(
           children: [
-            // ---------------------------------------------
-            // LAYER 1: The Complex Background Stack
-            // ---------------------------------------------
-            // ---------------------------------------------
-            // LAYER 1: The Complex Background Stack
-            // ---------------------------------------------
+            // -----------------------------
+            // LAYER 1: Black Grid Background
+            // -----------------------------
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               height: screenHeight * 0.45,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // 1. The Base Gradient (Light Top -> Dark Bottom)
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFF2C2C2C), // Lighter Charcoal (Upper Side)
-                          Color(0xFF000000), // Pure Black (Lower Side)
-                        ],
-                        // Stops control where the fade happens
-                        stops: [0.0, 0.8],
-                      ),
-                    ),
-                  ),
-
-                  // 2. The Noise Texture
-                  // It sits ON TOP of the gradient, but BEHIND the grid lines
-                  CustomPaint(painter: NoisePainter(), size: Size.infinite),
-
-                  // 3. Extra Shadow Gradient at the very bottom
-                  // This ensures the bottom area is pitch black before the white sheet starts
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      height: 150, // The height of the bottom shadow area
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(
-                              0.9,
-                            ), // Deep shadow at bottom
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 4. The Grid Lines
-                  // Placed LAST so they remain sharp and "untouched" by the noise or shadows
-                  CustomPaint(
-                    painter: TechnicalGridPainter(),
-                    size: Size.infinite,
-                  ),
-
-                  // 5. White transition (Optional: keeps the blend into the white sheet smooth)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.white.withOpacity(
-                              0.05,
-                            ), // Very subtle transition
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              child: const BlackGrid(),
             ),
 
-            // --- LAYER 2: Logo ---
+            // -----------------------------
+            // LAYER 2: Logo
+            // -----------------------------
             Positioned(
               top: 0,
               left: 0,
@@ -242,7 +85,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
 
-            // --- LAYER 3: White Bottom Sheet ---
+            // -----------------------------
+            // LAYER 3: White Bottom Sheet
+            // -----------------------------
             Positioned(
               top: screenHeight * 0.22,
               left: 0,
@@ -379,7 +224,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // --- Helper Methods ---
+  // -----------------------------
+  // Helper Methods
+  // -----------------------------
 
   Widget _buildInputLabel(String label) {
     return Text(
@@ -472,7 +319,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Ensure you have the SVG asset, otherwise use an Icon placeholder
             SvgPicture.asset(iconPath, height: 22),
             const SizedBox(width: 12),
             Text(
