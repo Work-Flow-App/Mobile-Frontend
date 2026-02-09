@@ -9,9 +9,8 @@ final jobServiceProvider = Provider((ref) {
   return JobService(dio);
 });
 
-final jobsFutureProvider = FutureProvider<List<JobWorkflow>>((ref) async {
-  // Fetch from Real API
-  return ref.watch(jobServiceProvider).getJobs();
+final assignedStepsFutureProvider = FutureProvider<List<JobStep>>((ref) async {
+  return ref.watch(jobServiceProvider).getAssignedSteps();
 });
 
 // Provider to fetch timeline for a specific step
@@ -22,17 +21,20 @@ final stepTimelineProvider = FutureProvider.family<List<dynamic>, int>((
   return ref.watch(jobServiceProvider).getStepTimeline(stepId);
 });
 
-final jobStatusFilterProvider = StateProvider<JobStatus?>((ref) => null);
+final stepStatusFilterProvider = StateProvider<StepStatus?>((ref) => null);
 
-final filteredJobsProvider = Provider<List<JobWorkflow>>((ref) {
-  final jobsAsync = ref.watch(jobsFutureProvider);
-  final filter = ref.watch(jobStatusFilterProvider);
-  return jobsAsync.when(
-    data: (jobs) =>
-        filter == null ? jobs : jobs.where((j) => j.status == filter).toList(),
+final filteredStepsProvider = Provider<List<JobStep>>((ref) {
+  final stepsAsync = ref.watch(assignedStepsFutureProvider);
+  final filter = ref.watch(stepStatusFilterProvider);
+
+  return stepsAsync.when(
+    data: (steps) => filter == null
+        ? steps
+        : steps.where((s) => s.status == filter).toList(),
     loading: () => [],
     error: (_, __) => [],
   );
 });
 
-final selectedJobIdProvider = StateProvider<int?>((ref) => null);
+// Used for Tablet view selection
+final selectedStepIdProvider = StateProvider<int?>((ref) => null);

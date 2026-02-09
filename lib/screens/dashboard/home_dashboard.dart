@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
-import 'package:mobile_frontend/screens/dashboard/job_steps_screen.dart';
+import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
 import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
-import 'job_list_view.dart';
+// Import the new list view
+import 'assigned_step_list_view.dart';
 
 class HomeDashboard extends ConsumerWidget {
   const HomeDashboard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allJobsAsync = ref.watch(jobsFutureProvider);
-
-    // 1. Get User Role
+    // Watch the steps provider to trigger loading/errors early
+    final stepsAsync = ref.watch(assignedStepsFutureProvider);
     final authState = ref.watch(authNotifierProvider);
     final isAdmin = authState.role == 'ADMIN';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("My Jobs"),
+        title: const Text("My Tasks"), // Renamed from "My Jobs"
         actions: const [
           Padding(
             padding: EdgeInsets.only(right: 16.0),
@@ -45,31 +45,11 @@ class HomeDashboard extends ConsumerWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.work_outline),
-              title: const Text('Jobs'),
+              leading: const Icon(Icons.task_alt),
+              title: const Text('My Tasks'),
               selected: true,
               onTap: () => Navigator.pop(context),
             ),
-            ListTile(
-              leading: const Icon(Icons.inventory_2_outlined),
-              title: const Text('Asset Management'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Asset Management coming soon!"),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout', style: TextStyle(color: Colors.red)),
@@ -81,16 +61,16 @@ class HomeDashboard extends ConsumerWidget {
           ],
         ),
       ),
-      body: allJobsAsync.when(
+      body: stepsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
-        data: (allJobs) {
+        data: (allSteps) {
           return LayoutBuilder(
             builder: (context, constraints) {
               if (constraints.maxWidth > 700) {
                 return const TabletSplitView();
               } else {
-                return const MobileJobListView();
+                return const MobileStepListView();
               }
             },
           );
@@ -100,15 +80,15 @@ class HomeDashboard extends ConsumerWidget {
   }
 }
 
-class MobileJobListView extends StatelessWidget {
-  const MobileJobListView({super.key});
+class MobileStepListView extends StatelessWidget {
+  const MobileStepListView({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: const [
-        FilterBar(),
-        Expanded(child: JobListView()),
+        FilterBar(), // Updates the stepStatusFilterProvider
+        Expanded(child: AssignedStepListView()),
       ],
     );
   }
@@ -119,20 +99,21 @@ class TabletSplitView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selectedJobId = ref.watch(selectedJobIdProvider);
-    final allJobs = ref.watch(jobsFutureProvider).value ?? [];
+    final selectedStepId = ref.watch(selectedStepIdProvider);
+    final allSteps = ref.watch(assignedStepsFutureProvider).value ?? [];
 
     Widget detailView;
-    if (selectedJobId == null) {
+    if (selectedStepId == null) {
       detailView = const Center(
         child: Text(
-          "Select a job to view details.",
+          "Select a task to view details.",
           style: TextStyle(color: Colors.grey),
         ),
       );
     } else {
-      final selectedJob = allJobs.firstWhere((j) => j.id == selectedJobId);
-      detailView = JobStepsScreen(job: selectedJob, isEmbedded: true);
+      final selectedStep = allSteps.firstWhere((s) => s.id == selectedStepId);
+      // Reuse StepDetailScreen directly
+      detailView = StepDetailScreen(step: selectedStep);
     }
 
     return Row(
@@ -142,7 +123,7 @@ class TabletSplitView extends ConsumerWidget {
           child: Column(
             children: [
               FilterBar(),
-              Expanded(child: JobListView(isTablet: true)),
+              Expanded(child: AssignedStepListView(isTablet: true)),
             ],
           ),
         ),

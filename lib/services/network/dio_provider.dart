@@ -8,6 +8,7 @@ final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: 'https://api.dev.workfloow.app/api/v1',
+      /* baseUrl: 'http://10.0.2.2:8080/api/v1', */
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},

@@ -6,8 +6,8 @@ import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/screens/auth/login_screen.dart';
 import 'package:mobile_frontend/screens/auth/signup_screen.dart';
-import 'package:mobile_frontend/screens/dashboard/job_steps_screen.dart';
 import 'package:mobile_frontend/screens/dashboard/home_dashboard.dart';
+import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
 // import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart'; // Uncomment if you add route for this
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -73,13 +73,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const HomeDashboard(),
       ),
 
+      // --- ADDED THIS ROUTE ---
       GoRoute(
-        path: '/job-detail',
-        name: 'job-detail',
+        path: '/step-detail',
+        name: 'step-detail',
         builder: (context, state) {
-          // Pass the Job object via 'extra' parameter
-          final job = state.extra as JobWorkflow;
-          return JobStepsScreen(job: job);
+          // Pass the JobStep object via 'extra'
+          final step = state.extra as JobStep;
+          return StepDetailScreen(step: step);
         },
       ),
 

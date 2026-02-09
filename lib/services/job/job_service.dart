@@ -9,14 +9,14 @@ class JobService {
 
   JobService(this._dio);
 
-  // GET /worker/job-workflows [cite: 17]
-  Future<List<JobWorkflow>> getJobs() async {
+  // GET /worker/job-workflow-steps
+  Future<List<JobStep>> getAssignedSteps() async {
     try {
-      final response = await _dio.get('/worker/job-workflows');
+      final response = await _dio.get('/worker/job-workflow-steps');
       final List data = response.data;
-      return data.map((json) => JobWorkflow.fromJson(json)).toList();
+      return data.map((json) => JobStep.fromJson(json)).toList();
     } catch (e) {
-      throw Exception('Failed to load jobs: $e');
+      throw Exception('Failed to load assigned steps: $e');
     }
   }
 
