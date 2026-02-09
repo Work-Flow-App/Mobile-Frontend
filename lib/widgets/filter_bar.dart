@@ -8,7 +8,7 @@ class FilterBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentFilter = ref.watch(jobStatusFilterProvider);
+    final currentFilter = ref.watch(stepStatusFilterProvider);
 
     return Container(
       height: 60,
@@ -21,11 +21,13 @@ class FilterBar extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         children: [
           _buildFilterChip(context, ref, "All", null, currentFilter == null),
-          // Using the enum values to generate chips ensures colors match
-          _buildEnumChip(context, ref, JobStatus.PENDING, currentFilter),
-          _buildEnumChip(context, ref, JobStatus.ONGOING, currentFilter),
-          _buildEnumChip(context, ref, JobStatus.COMPLETED, currentFilter),
-          _buildEnumChip(context, ref, JobStatus.NOT_STARTED, currentFilter),
+          // Iterate over the specific enum order you prefer
+          _buildEnumChip(context, ref, StepStatus.INITIATED, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.PENDING, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.ONGOING, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.STARTED, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.COMPLETED, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.SKIPPED, currentFilter),
         ],
       ),
     );
@@ -34,8 +36,8 @@ class FilterBar extends ConsumerWidget {
   Widget _buildEnumChip(
     BuildContext context,
     WidgetRef ref,
-    JobStatus status,
-    JobStatus? currentFilter,
+    StepStatus status,
+    StepStatus? currentFilter,
   ) {
     final isSelected = currentFilter == status;
     return Padding(
@@ -44,10 +46,9 @@ class FilterBar extends ConsumerWidget {
         label: Text(status.label),
         selected: isSelected,
         onSelected: (_) {
-          ref.read(jobStatusFilterProvider.notifier).state = status;
-          ref.read(selectedJobIdProvider.notifier).state = null;
+          ref.read(stepStatusFilterProvider.notifier).state = status;
+          ref.read(selectedStepIdProvider.notifier).state = null;
         },
-        // Use the colors from the model extension
         selectedColor: status.backgroundColor.withOpacity(1.0),
         backgroundColor: Colors.white,
         checkmarkColor: status.color,
@@ -62,7 +63,7 @@ class FilterBar extends ConsumerWidget {
           ),
           borderRadius: BorderRadius.circular(20),
         ),
-        showCheckmark: false, // Cleaner look
+        showCheckmark: false,
       ),
     );
   }
@@ -71,7 +72,7 @@ class FilterBar extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     String label,
-    JobStatus? status,
+    StepStatus? status,
     bool isSelected,
   ) {
     return Padding(
@@ -80,8 +81,8 @@ class FilterBar extends ConsumerWidget {
         label: Text(label),
         selected: isSelected,
         onSelected: (_) {
-          ref.read(jobStatusFilterProvider.notifier).state = status;
-          ref.read(selectedJobIdProvider.notifier).state = null;
+          ref.read(stepStatusFilterProvider.notifier).state = status;
+          ref.read(selectedStepIdProvider.notifier).state = null;
         },
         selectedColor: Colors.black,
         checkmarkColor: Colors.white,

@@ -41,9 +41,11 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   // --- ACTIONS ---
 
   Future<void> _handleRefresh() async {
-    // Refreshes discussion  and global job list [cite: 17]
+    // 1. Refresh the specific timeline for this step
     ref.refresh(stepTimelineProvider(step.id));
-    return ref.refresh(jobsFutureProvider);
+
+    // 2. Refresh the global list of assigned steps (Renamed from jobsFutureProvider)
+    return ref.refresh(assignedStepsFutureProvider);
   }
 
   Future<void> _startStep() async {
