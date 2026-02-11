@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_frontend/models/job/timeline_model.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import this
 
 class TimelineItemWidget extends StatelessWidget {
   final TimelineEvent event;
@@ -13,6 +14,52 @@ class TimelineItemWidget extends StatelessWidget {
     required this.isLast,
     required this.currentWorkerId,
   });
+
+  // Helper method to open URLs
+  Future<void> _openFileUrl(BuildContext context, String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      // mode: LaunchMode.externalApplication is crucial.
+      // It forces the OS to open the browser/PDF viewer, which allows downloading.
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception('Could not launch $url');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open file: $e')));
+    }
+  }
+
+  // Helper to show full screen image
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.download),
+                onPressed: () => _openFileUrl(context, imageUrl),
+                tooltip: "Download/Open in Browser",
+              ),
+            ],
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true, // Set it to false to prevent panning.
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.network(imageUrl),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +82,7 @@ class TimelineItemWidget extends StatelessWidget {
                 children: [
                   _buildHeader(displayName, time),
                   const SizedBox(height: 6),
-                  if (event.isAttachment)
+                  if (event.itemType == 'ATTACHMENT' || event.fileUrl != null)
                     _buildAttachmentContent(context)
                   else
                     _buildCommentContent(),
@@ -48,6 +95,7 @@ class TimelineItemWidget extends StatelessWidget {
     );
   }
 
+  // ... _buildAvatarLine() remains the same ...
   Widget _buildAvatarLine() {
     return Column(
       children: [
@@ -68,6 +116,7 @@ class TimelineItemWidget extends StatelessWidget {
     );
   }
 
+  // ... _buildHeader() remains the same ...
   Widget _buildHeader(String name, String time) {
     return Row(
       children: [
@@ -81,6 +130,7 @@ class TimelineItemWidget extends StatelessWidget {
     );
   }
 
+  // ... _buildCommentContent() remains the same ...
   Widget _buildCommentContent() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -103,11 +153,13 @@ class TimelineItemWidget extends StatelessWidget {
   }
 
   Widget _buildAttachmentContent(BuildContext context) {
+    // Safety check for null fileUrl
+    if (event.fileUrl == null) return const SizedBox();
+
     final bool hasImage =
-        event.fileUrl != null &&
-        (event.fileUrl!.toLowerCase().contains('.jpg') ||
-            event.fileUrl!.toLowerCase().contains('.jpeg') ||
-            event.fileUrl!.toLowerCase().contains('.png'));
+        event.fileUrl!.toLowerCase().contains('.jpg') ||
+        event.fileUrl!.toLowerCase().contains('.jpeg') ||
+        event.fileUrl!.toLowerCase().contains('.png');
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 250),
@@ -120,29 +172,43 @@ class TimelineItemWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (hasImage) _buildImageThumbnail() else _buildFileTile(context),
+          if (hasImage)
+            _buildImageThumbnail(context) // Pass context here
+          else
+            _buildFileTile(context),
         ],
       ),
     );
   }
 
-  Widget _buildImageThumbnail() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        event.fileUrl!,
-        fit: BoxFit.cover,
-        loadingBuilder: (ctx, child, progress) => progress == null
-            ? child
-            : Container(
-                height: 150,
-                width: double.infinity,
-                color: Colors.grey[100],
-                child: const Center(child: CircularProgressIndicator()),
+  Widget _buildImageThumbnail(BuildContext context) {
+    return InkWell(
+      onTap: () => _showFullScreenImage(context, event.fileUrl!),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Hero(
+          // Hero animation for smooth transition
+          tag: 'image_${event.id}',
+          child: Image.network(
+            event.fileUrl!,
+            fit: BoxFit.cover,
+            height: 150,
+            width: double.infinity,
+            loadingBuilder: (ctx, child, progress) => progress == null
+                ? child
+                : Container(
+                    height: 150,
+                    width: double.infinity,
+                    color: Colors.grey[100],
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+            errorBuilder: (_, __, ___) => const SizedBox(
+              height: 100,
+              child: Center(
+                child: Icon(Icons.broken_image, color: Colors.grey),
               ),
-        errorBuilder: (_, __, ___) => const SizedBox(
-          height: 100,
-          child: Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+            ),
+          ),
         ),
       ),
     );
@@ -150,25 +216,30 @@ class TimelineItemWidget extends StatelessWidget {
 
   Widget _buildFileTile(BuildContext context) {
     return ListTile(
-      leading: Icon(Icons.description, color: Theme.of(context).primaryColor),
+      contentPadding: EdgeInsets.zero,
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.blue.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.description, color: Theme.of(context).primaryColor),
+      ),
       title: Text(
         event.content.isNotEmpty ? event.content : "Attachment",
         style: const TextStyle(
           fontSize: 14,
-          color: Colors.blue,
+          fontWeight: FontWeight.w500,
           decoration: TextDecoration.underline,
         ),
         overflow: TextOverflow.ellipsis,
+        maxLines: 1,
       ),
       subtitle: const Text(
-        "Tap to view",
-        style: TextStyle(fontSize: 10, color: Colors.grey),
+        "Tap to open",
+        style: TextStyle(fontSize: 11, color: Colors.grey),
       ),
-      onTap: () {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Opening ${event.content}...")));
-      },
+      onTap: () => _openFileUrl(context, event.fileUrl!),
     );
   }
 }
