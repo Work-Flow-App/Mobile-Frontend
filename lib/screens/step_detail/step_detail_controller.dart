@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
+import 'package:mobile_frontend/models/job/timeline_model.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 
 // 1. State class to hold loading status and current step data
@@ -75,20 +76,29 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     }
   }
 
-  Future<void> addComment(String text) async {
+  Future<void> addComment(String text, StepDiscussionType type) async {
     if (text.trim().isEmpty) return;
     try {
-      await ref.read(jobServiceProvider).addComment(state.step.id, text.trim());
+      await ref
+          .read(jobServiceProvider)
+          .addComment(state.step.id, text.trim(), type);
       refreshTimeline();
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<void> uploadFile(String path) async {
+  // Updated signature
+  Future<void> uploadFile(
+    String path,
+    StepDiscussionType type,
+    String? description,
+  ) async {
     state = state.copyWith(isLoading: true);
     try {
-      await ref.read(jobServiceProvider).addAttachment(state.step.id, path);
+      await ref
+          .read(jobServiceProvider)
+          .addAttachment(state.step.id, path, type, description);
       refreshTimeline();
     } catch (e) {
       rethrow;

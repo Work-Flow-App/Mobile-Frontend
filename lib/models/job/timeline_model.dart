@@ -1,10 +1,47 @@
+import 'package:flutter/material.dart';
+
 enum TimelineItemType { COMMENT, ATTACHMENT, UNKNOWN }
+
+// New Enum based on your requirements
+enum StepDiscussionType {
+  GENERAL,
+  ADDITIONAL,
+  COMPLAINT,
+  INTERNAL_NOTE,
+  APPROVAL,
+  REJECTION,
+  UNKNOWN,
+}
+
+extension StepDiscussionTypeExtension on StepDiscussionType {
+  String get label => name.replaceAll('_', ' ');
+
+  Color get color {
+    switch (this) {
+      case StepDiscussionType.APPROVAL:
+        return Colors.green;
+      case StepDiscussionType.REJECTION:
+        return Colors.red;
+      case StepDiscussionType.COMPLAINT:
+        return Colors.orange;
+      case StepDiscussionType.INTERNAL_NOTE:
+        return Colors.amber;
+      case StepDiscussionType.ADDITIONAL:
+        return Colors.purple;
+      case StepDiscussionType.GENERAL:
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+}
 
 class TimelineEvent {
   final int id;
   final TimelineItemType itemType;
-  final String
-  content; // Content for comments, filename for attachments sometimes
+  final StepDiscussionType discussionType;
+  final String content; // Filename for attachments, text for comments
+  final String? description; //for attachments
   final String? fileUrl;
   final int actorId;
   final DateTime createdAt;
@@ -12,14 +49,16 @@ class TimelineEvent {
   TimelineEvent({
     required this.id,
     required this.itemType,
+    required this.discussionType,
     required this.content,
+    this.description,
     this.fileUrl,
     required this.actorId,
     required this.createdAt,
   });
 
   factory TimelineEvent.fromJson(Map<String, dynamic> json) {
-    // Parse itemType string to Enum [cite: 32]
+    // Parse Item Type
     TimelineItemType type;
     switch (json['itemType']) {
       case 'COMMENT':
@@ -32,10 +71,17 @@ class TimelineEvent {
         type = TimelineItemType.UNKNOWN;
     }
 
+    StepDiscussionType discType = StepDiscussionType.values.firstWhere(
+      (e) => e.name == json['discussionType'],
+      orElse: () => StepDiscussionType.GENERAL, // Default
+    );
+
     return TimelineEvent(
       id: json['id'] ?? 0,
       itemType: type,
+      discussionType: discType,
       content: json['content'] ?? "",
+      description: json['description'],
       fileUrl: json['fileUrl'],
       actorId: json['actorId'] ?? 0,
       createdAt: DateTime.tryParse(json['createdAt'] ?? "") ?? DateTime.now(),

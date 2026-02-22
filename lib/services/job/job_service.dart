@@ -5,7 +5,7 @@ import 'package:mobile_frontend/models/job/timeline_model.dart';
 class JobService {
   final Dio _dio;
   // In a real app, you would get this from the AuthProvider state
-  final int currentWorkerId = 1; // Example ID based on docs [cite: 18]
+  final int currentWorkerId = 16879745645878;
 
   JobService(this._dio);
 
@@ -54,33 +54,44 @@ class JobService {
   }
 
   // POST /worker/job-workflow-steps/{id}/comments [cite: 23]
-  Future<void> addComment(int stepId, String content) async {
+  Future<void> addComment(
+    int stepId,
+    String content,
+    StepDiscussionType type,
+  ) async {
     try {
       await _dio.post(
         '/worker/job-workflow-steps/$stepId/comments',
-        data: {'content': content},
+        data: {
+          'content': content,
+          'type': type.name, // e.g. "GENERAL"
+        },
       );
     } catch (e) {
       throw Exception('Failed to add comment: $e');
     }
   }
 
-  Future<void> addAttachment(int stepId, String filePath) async {
+  Future<void> addAttachment(
+    int stepId,
+    String filePath,
+    StepDiscussionType type,
+    String? description,
+  ) async {
     try {
       String fileName = filePath.split('/').last;
 
-      // Create FormData
       FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          filePath,
-          filename: fileName,
-          // The API expects multipart/form-data which Dio handles automatically,
-          // but specifying the sub-type helps with some backends.
-        ),
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
       });
 
       await _dio.post(
         '/worker/job-workflow-steps/$stepId/attachments',
+        queryParameters: {
+          'type': type.name,
+          if (description != null && description.isNotEmpty)
+            'description': description,
+        },
         data: formData,
         options: Options(headers: {'Content-Type': 'multipart/form-data'}),
       );
