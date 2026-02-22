@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_frontend/models/job/timeline_model.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import this
+import 'package:url_launcher/url_launcher.dart';
 
 class TimelineItemWidget extends StatelessWidget {
   final TimelineEvent event;
@@ -82,7 +82,21 @@ class TimelineItemWidget extends StatelessWidget {
                 children: [
                   _buildHeader(displayName, time),
                   const SizedBox(height: 6),
-                  if (event.itemType == 'ATTACHMENT' || event.fileUrl != null)
+                  // Display Description if it exists
+                  if (event.description != null &&
+                      event.description!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        event.description!,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  // FIX: Use isAttachment getter instead of string comparison
+                  if (event.isAttachment || event.fileUrl != null)
                     _buildAttachmentContent(context)
                   else
                     _buildCommentContent(),
@@ -95,7 +109,6 @@ class TimelineItemWidget extends StatelessWidget {
     );
   }
 
-  // ... _buildAvatarLine() remains the same ...
   Widget _buildAvatarLine() {
     return Column(
       children: [
@@ -116,7 +129,6 @@ class TimelineItemWidget extends StatelessWidget {
     );
   }
 
-  // ... _buildHeader() remains the same ...
   Widget _buildHeader(String name, String time) {
     return Row(
       children: [
@@ -125,12 +137,28 @@ class TimelineItemWidget extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
         const SizedBox(width: 8),
-        Text(time, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+        Text(time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const Spacer(),
+        // Type Badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: event.discussionType.color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            event.discussionType.label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  // ... _buildCommentContent() remains the same ...
   Widget _buildCommentContent() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -153,7 +181,6 @@ class TimelineItemWidget extends StatelessWidget {
   }
 
   Widget _buildAttachmentContent(BuildContext context) {
-    // Safety check for null fileUrl
     if (event.fileUrl == null) return const SizedBox();
 
     final bool hasImage =
@@ -173,7 +200,7 @@ class TimelineItemWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (hasImage)
-            _buildImageThumbnail(context) // Pass context here
+            _buildImageThumbnail(context)
           else
             _buildFileTile(context),
         ],
@@ -187,7 +214,6 @@ class TimelineItemWidget extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Hero(
-          // Hero animation for smooth transition
           tag: 'image_${event.id}',
           child: Image.network(
             event.fileUrl!,
