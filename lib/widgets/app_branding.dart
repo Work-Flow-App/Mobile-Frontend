@@ -23,7 +23,7 @@ class AppBranding extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (showText) ...[
+/*         if (showText) ...[
           Text(
             "Floow",
             style: TextStyle(
@@ -36,7 +36,7 @@ class AppBranding extends StatelessWidget {
           ),
           const SizedBox(width: 8),
         ],
-        // The Logo follows the text
+        // The Logo follows the text */
         SvgPicture.asset(
           'assets/images/logo.svg',
           height: size,
