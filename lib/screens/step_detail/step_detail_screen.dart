@@ -22,10 +22,10 @@ class StepDetailScreen extends ConsumerStatefulWidget {
 
 class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   final commentController = TextEditingController();
-  
+
   // UI State for Filters
   bool _isAttachmentOnlyMode = false;
-  StepDiscussionType? _filterType; // null = "All"
+  Set<StepDiscussionType> _selectedFilterTypes = {};
 
   // UI State for Input
   StepDiscussionType _inputType = StepDiscussionType.GENERAL;
@@ -40,7 +40,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   Widget build(BuildContext context) {
     final screenState = ref.watch(stepDetailControllerProvider(widget.step));
     final currentStep = screenState.step;
-    final canEdit = true;
+    final canEdit = true; // Based on your auth logic
 
     return Scaffold(
       appBar: AppBar(
@@ -59,9 +59,17 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth > 800) {
-            return _buildSplitLayout(currentStep, canEdit, screenState.isLoading);
+            return _buildSplitLayout(
+              currentStep,
+              canEdit,
+              screenState.isLoading,
+            );
           } else {
-            return _buildMobileLayout(currentStep, canEdit, screenState.isLoading);
+            return _buildMobileLayout(
+              currentStep,
+              canEdit,
+              screenState.isLoading,
+            );
           }
         },
       ),
@@ -105,12 +113,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
 
   Widget _buildTimelineSection(JobStep step, bool canEdit) {
     final timelineAsync = ref.watch(stepTimelineProvider(step.id));
-    final controller = ref.read(stepDetailControllerProvider(widget.step).notifier);
+    final controller = ref.read(
+      stepDetailControllerProvider(widget.step).notifier,
+    );
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
     return Column(
       children: [
-        // 1. New Advanced Filter Bar
+        // 1. Advanced Filter Bar (Multi-Select + Attachments Toggle)
         _buildAdvancedFilterBar(),
 
         // 2. Timeline List OR Gallery Grid
@@ -177,36 +187,45 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       ),
       child: Row(
         children: [
-          // Dropdown Filter
+          // Multi-Select Filter Button
           Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<StepDiscussionType?>(
-                isExpanded: true,
-                value: _filterType,
-                icon: const Icon(Icons.filter_list, size: 20),
-                hint: const Text("Filter by Type"),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text("All Types")),
-                  ...StepDiscussionType.values.where((e) => e != StepDiscussionType.UNKNOWN).map((type) {
-                    return DropdownMenuItem(
-                      value: type,
-                      child: Row(
-                        children: [
-                          Icon(Icons.circle, size: 12, color: type.color),
-                          const SizedBox(width: 8),
-                          Text(type.label),
-                        ],
+            child: InkWell(
+              onTap: _showMultiSelectFilterDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.filter_list, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _selectedFilterTypes.isEmpty
+                            ? "All Types"
+                            : "${_selectedFilterTypes.length} Selected",
+                        style: const TextStyle(fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    );
-                  }),
-                ],
-                onChanged: (val) => setState(() => _filterType = val),
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                  ],
+                ),
               ),
             ),
           ),
           const SizedBox(width: 16),
           // Toggle Gallery
-          const Text("Attachments Only", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          const Text(
+            "Attachments Only",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
           Switch(
             value: _isAttachmentOnlyMode,
             activeColor: Theme.of(context).primaryColor,
@@ -214,6 +233,71 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // Multi-Select Dialog Method
+  void _showMultiSelectFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        // StatefulBuilder is required to update checkboxes inside a dialog
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text("Filter by Type"),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: StepDiscussionType.values
+                      .where((e) => e != StepDiscussionType.UNKNOWN)
+                      .map((type) {
+                        return CheckboxListTile(
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          title: Row(
+                            children: [
+                              Icon(Icons.circle, size: 12, color: type.color),
+                              const SizedBox(width: 8),
+                              Text(type.label),
+                            ],
+                          ),
+                          value: _selectedFilterTypes.contains(type),
+                          onChanged: (bool? checked) {
+                            setDialogState(() {
+                              if (checked == true) {
+                                _selectedFilterTypes.add(type);
+                              } else {
+                                _selectedFilterTypes.remove(type);
+                              }
+                            });
+                          },
+                        );
+                      })
+                      .toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      _selectedFilterTypes.clear();
+                    });
+                  },
+                  child: const Text("Clear All"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    setState(() {}); // Update the main screen to apply filters
+                  },
+                  child: const Text("Apply"),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -229,14 +313,18 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       itemCount: events.length,
       itemBuilder: (context, index) {
         final event = events[index] as TimelineEvent;
-        final isImage = event.fileUrl?.toLowerCase().contains('.jpg') == true || 
-                        event.fileUrl?.toLowerCase().contains('.jpeg') == true ||
-                        event.fileUrl?.toLowerCase().contains('.png') == true;
+        final isImage =
+            event.fileUrl?.toLowerCase().contains('.jpg') == true ||
+            event.fileUrl?.toLowerCase().contains('.jpeg') == true ||
+            event.fileUrl?.toLowerCase().contains('.png') == true;
 
         return InkWell(
           onTap: () async {
             if (event.fileUrl != null) {
-              await launchUrl(Uri.parse(event.fileUrl!), mode: LaunchMode.externalApplication);
+              await launchUrl(
+                Uri.parse(event.fileUrl!),
+                mode: LaunchMode.externalApplication,
+              );
             }
           },
           child: Container(
@@ -244,42 +332,63 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               color: Colors.white,
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
                     child: isImage && event.fileUrl != null
-                      ? Image.network(event.fileUrl!, fit: BoxFit.cover)
-                      : Container(
-                          color: Colors.grey.shade100,
-                          child: Icon(Icons.insert_drive_file, size: 48, color: event.discussionType.color),
-                        ),
+                        ? Image.network(event.fileUrl!, fit: BoxFit.cover)
+                        : Container(
+                            color: Colors.grey.shade100,
+                            child: Icon(
+                              Icons.insert_drive_file,
+                              size: 48,
+                              color: event.discussionType.color,
+                            ),
+                          ),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: event.discussionType.color.withOpacity(0.1),
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(12),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                       Text(
-                        event.discussionType.label, 
-                        style: TextStyle(fontSize: 10, color: event.discussionType.color, fontWeight: FontWeight.bold)
-                       ),
-                       const SizedBox(height: 2),
-                       Text(
+                      Text(
+                        event.discussionType.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: event.discussionType.color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
                         event.description ?? event.content,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                       ),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -302,19 +411,35 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             // Select Type Row
             Row(
               children: [
-                const Text("Type: ", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  "Type: ",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 DropdownButtonHideUnderline(
                   child: DropdownButton<StepDiscussionType>(
                     value: _inputType,
                     isDense: true,
-                    items: StepDiscussionType.values.where((e) => e != StepDiscussionType.UNKNOWN).map((type) {
-                      return DropdownMenuItem(
-                        value: type,
-                        child: Text(type.label, style: TextStyle(color: type.color, fontSize: 14, fontWeight: FontWeight.bold)),
-                      );
-                    }).toList(),
+                    items: StepDiscussionType.values
+                        .where((e) => e != StepDiscussionType.UNKNOWN)
+                        .map((type) {
+                          return DropdownMenuItem(
+                            value: type,
+                            child: Text(
+                              type.label,
+                              style: TextStyle(
+                                color: type.color,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        })
+                        .toList(),
                     onChanged: (val) {
-                       if (val != null) setState(() => _inputType = val);
+                      if (val != null) setState(() => _inputType = val);
                     },
                   ),
                 ),
@@ -343,7 +468,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                       decoration: const InputDecoration(
                         hintText: "Add a comment...",
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -355,10 +483,15 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                     icon: const Icon(Icons.send, color: Colors.white, size: 20),
                     onPressed: () async {
                       try {
-                        await controller.addComment(commentController.text, _inputType);
+                        await controller.addComment(
+                          commentController.text,
+                          _inputType,
+                        );
                         commentController.clear();
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
                       }
                     },
                   ),
@@ -374,17 +507,18 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   List<dynamic> _applyFilters(List<dynamic> events) {
     return events.where((e) {
       if (e is! TimelineEvent) return false;
-      
+
       // 1. Attachments Only Filter
       if (_isAttachmentOnlyMode && !e.isAttachment) {
         return false;
       }
 
-      // 2. Discussion Type Filter
-      if (_filterType != null && e.discussionType != _filterType) {
+      // 2. Discussion Type Filter (Multi-select)
+      if (_selectedFilterTypes.isNotEmpty &&
+          !_selectedFilterTypes.contains(e.discussionType)) {
         return false;
       }
-      
+
       return true;
     }).toList();
   }
@@ -392,14 +526,16 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   void _showAttachmentOptions(StepDetailController controller) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, 
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return _AttachmentUploadSheet(
           onUpload: (path, type, desc) async {
-             await controller.uploadFile(path, type, desc);
-             if (mounted) Navigator.pop(context); 
-          }
+            await controller.uploadFile(path, type, desc);
+            if (mounted) Navigator.pop(context);
+          },
         );
       },
     );
@@ -422,13 +558,15 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
   Future<void> _pickFile(int type) async {
     String? path;
     if (type == 0 || type == 1) {
-       final img = await ImagePicker().pickImage(source: type == 0 ? ImageSource.camera : ImageSource.gallery);
-       path = img?.path;
+      final img = await ImagePicker().pickImage(
+        source: type == 0 ? ImageSource.camera : ImageSource.gallery,
+      );
+      path = img?.path;
     } else {
-       final res = await FilePicker.platform.pickFiles();
-       path = res?.files.single.path;
+      final res = await FilePicker.platform.pickFiles();
+      path = res?.files.single.path;
     }
-    
+
     if (path != null) {
       setState(() => _selectedPath = path);
     }
@@ -437,53 +575,99 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 16, right: 16, top: 16),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 16,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Upload Attachment", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            "Upload Attachment",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 16),
-          
+
           if (_selectedPath == null)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildUploadOption(Icons.camera_alt, Colors.blue, "Camera", () => _pickFile(0)),
-                _buildUploadOption(Icons.photo_library, Colors.purple, "Gallery", () => _pickFile(1)),
-                _buildUploadOption(Icons.insert_drive_file, Colors.orange, "File", () => _pickFile(2)),
+                _buildUploadOption(
+                  Icons.camera_alt,
+                  Colors.blue,
+                  "Camera",
+                  () => _pickFile(0),
+                ),
+                _buildUploadOption(
+                  Icons.photo_library,
+                  Colors.purple,
+                  "Gallery",
+                  () => _pickFile(1),
+                ),
+                _buildUploadOption(
+                  Icons.insert_drive_file,
+                  Colors.orange,
+                  "File",
+                  () => _pickFile(2),
+                ),
               ],
             )
-          else 
+          else
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.check_circle, color: Colors.green),
-              title: Text(_selectedPath!.split('/').last, maxLines: 1, overflow: TextOverflow.ellipsis),
-              trailing: IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _selectedPath = null)),
+              title: Text(
+                _selectedPath!.split('/').last,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() => _selectedPath = null),
+              ),
             ),
-          
+
           const SizedBox(height: 16),
           DropdownButtonFormField<StepDiscussionType>(
             value: _selectedType,
-            decoration: const InputDecoration(labelText: "Attachment Type", border: OutlineInputBorder()),
-            items: StepDiscussionType.values.where((e) => e != StepDiscussionType.UNKNOWN).map((t) => 
-               DropdownMenuItem(value: t, child: Text(t.label))).toList(),
+            decoration: const InputDecoration(
+              labelText: "Attachment Type",
+              border: OutlineInputBorder(),
+            ),
+            items: StepDiscussionType.values
+                .where((e) => e != StepDiscussionType.UNKNOWN)
+                .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                .toList(),
             onChanged: (val) => setState(() => _selectedType = val!),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _descController,
-            decoration: const InputDecoration(labelText: "Description (Optional)", border: OutlineInputBorder()),
+            decoration: const InputDecoration(
+              labelText: "Description (Optional)",
+              border: OutlineInputBorder(),
+            ),
             maxLines: 2,
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
-              onPressed: _selectedPath == null ? null : () {
-                widget.onUpload(_selectedPath!, _selectedType, _descController.text);
-              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              onPressed: _selectedPath == null
+                  ? null
+                  : () {
+                      widget.onUpload(
+                        _selectedPath!,
+                        _selectedType,
+                        _descController.text,
+                      );
+                    },
               child: const Text("Upload"),
             ),
           ),
@@ -493,13 +677,22 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
     );
   }
 
-  Widget _buildUploadOption(IconData icon, Color color, String label, VoidCallback onTap) {
+  Widget _buildUploadOption(
+    IconData icon,
+    Color color,
+    String label,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleAvatar(backgroundColor: color.withOpacity(0.2), radius: 24, child: Icon(icon, color: color)),
+          CircleAvatar(
+            backgroundColor: color.withOpacity(0.2),
+            radius: 24,
+            child: Icon(icon, color: color),
+          ),
           const SizedBox(height: 8),
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
