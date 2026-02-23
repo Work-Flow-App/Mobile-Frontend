@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/floow_logo.dart';
@@ -16,6 +15,16 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+
+  // State for toggling password visibility
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 40),
 
-                      // Email Field
+                      // Username Field
                       _buildTextField(
                         label: "Username",
                         hint: "username",
@@ -107,18 +116,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      // Password Field
+                      // Password Field with Toggle logic
                       _buildTextField(
                         label: "Password",
                         hint: "••••••••••••",
                         controller: passwordController,
                         enabled: !isLoading,
                         isPassword: true,
+                        obscureText: _obscurePassword,
+                        onToggleVisibility: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
                       ),
 
                       const SizedBox(height: 30),
 
-                      // Login Button with your Logic
+                      // Login Button
                       SizedBox(
                         width: double.infinity,
                         height: 55,
@@ -159,16 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
-                      /* TextButton(
-                        onPressed: () => context.push('/signup'),
-                        child: const Text(
-                          "Don't have an account? Sign up",
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                      ), */
                     ],
                   ),
                 ),
@@ -180,13 +186,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // Reusable TextField helper
+  // Updated Reusable TextField helper
   Widget _buildTextField({
     required String label,
     required String hint,
     required TextEditingController controller,
     bool enabled = true,
     bool isPassword = false,
+    bool obscureText = false,
+    VoidCallback? onToggleVisibility,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +210,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         TextField(
           controller: controller,
           enabled: enabled,
-          obscureText: isPassword,
+          obscureText: isPassword ? obscureText : false,
+          style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Colors.grey),
@@ -213,6 +222,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               borderSide: BorderSide.none,
             ),
             contentPadding: const EdgeInsets.all(16),
+            // Suffix icon logic for password toggle
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.grey,
+                    ),
+                    onPressed: onToggleVisibility,
+                  )
+                : null,
           ),
         ),
       ],
