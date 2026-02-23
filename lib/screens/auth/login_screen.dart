@@ -51,144 +51,165 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            // Background Layer (Logo area)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: MediaQuery.of(context).size.height * 0.35,
-              child: Container(
-                color: const Color(0xFF121212),
-                child: const Center(
-                  // Using the updated BrandLogo with a vertical axis
-                  child: BrandLogo(
-                    isAppBar: false,
-                    iconSize: 65,
-                    textSvgWidth:
-                        250, // Adjust this size to fit your SVG perfectly
-                    axis: Axis.vertical,
-                  ),
-                ),
-              ),
-            ),
-
-            // White "Sheet" Layer
-            Positioned.fill(
-              top: MediaQuery.of(context).size.height * 0.28,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(40),
-                    topRight: Radius.circular(40),
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 30,
-                    vertical: 40,
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Welcome Back!",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "Enter your valid username and password\nto access your account.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                      ),
-                      const SizedBox(height: 40),
-
-                      // Username Field
-                      _buildTextField(
-                        label: "Username",
-                        hint: "username",
-                        controller: usernameController,
-                        enabled: !isLoading,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Password Field with Toggle logic
-                      _buildTextField(
-                        label: "Password",
-                        hint: "••••••••••••",
-                        controller: passwordController,
-                        enabled: !isLoading,
-                        isPassword: true,
-                        obscureText: _obscurePassword,
-                        onToggleVisibility: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      // Login Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: isLoading
-                              ? null
-                              : () {
-                                  ref
-                                      .read(authNotifierProvider.notifier)
-                                      .login(
-                                        usernameController.text,
-                                        passwordController.text,
-                                      );
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.grey.shade800,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+        // Set the background color to match the dark logo area
+        backgroundColor: const Color(0xFF121212),
+        body: SafeArea(
+          bottom: false, // Let the white sheet extend to the very bottom edge
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        // --- Logo Area ---
+                        // It will naturally take up the space it needs without overlapping
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 50.0),
+                          child: const Center(
+                            child: BrandLogo(
+                              isAppBar: false,
+                              iconSize: 65,
+                              textSvgWidth: 250,
+                              axis: Axis.vertical,
                             ),
                           ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  "Log in",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+
+                        // --- White "Sheet" Area ---
+                        // Expanded ensures it pushes to the bottom of the screen
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(40),
+                                topRight: Radius.circular(40),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 30,
+                              vertical: 40,
+                            ),
+                            // Wrapping the form inside SafeArea so it respects bottom navigation bars
+                            child: SafeArea(
+                              top: false,
+                              child: Column(
+                                children: [
+                                  const Text(
+                                    "Welcome Back!",
+                                    style: TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    "Enter your valid username and password\nto access your account.",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 40),
+
+                                  // Username Field
+                                  _buildTextField(
+                                    label: "Username",
+                                    hint: "username",
+                                    controller: usernameController,
+                                    enabled: !isLoading,
+                                  ),
+                                  const SizedBox(height: 20),
+
+                                  // Password Field with Toggle logic
+                                  _buildTextField(
+                                    label: "Password",
+                                    hint: "••••••••••••",
+                                    controller: passwordController,
+                                    enabled: !isLoading,
+                                    isPassword: true,
+                                    obscureText: _obscurePassword,
+                                    onToggleVisibility: () {
+                                      setState(() {
+                                        _obscurePassword = !_obscurePassword;
+                                      });
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 30),
+
+                                  // Login Button
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 55,
+                                    child: ElevatedButton(
+                                      onPressed: isLoading
+                                          ? null
+                                          : () {
+                                              ref
+                                                  .read(
+                                                    authNotifierProvider
+                                                        .notifier,
+                                                  )
+                                                  .login(
+                                                    usernameController.text,
+                                                    passwordController.text,
+                                                  );
+                                            },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.black,
+                                        foregroundColor: Colors.white,
+                                        disabledBackgroundColor:
+                                            Colors.grey.shade800,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                      child: isLoading
+                                          ? const SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(
+                                                color: Colors.white,
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Text(
+                                              "Log in",
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  // Updated Reusable TextField helper
+  // Reusable TextField helper
   Widget _buildTextField({
     required String label,
     required String hint,
@@ -224,7 +245,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               borderSide: BorderSide.none,
             ),
             contentPadding: const EdgeInsets.all(16),
-            // Suffix icon logic for password toggle
             suffixIcon: isPassword
                 ? IconButton(
                     icon: Icon(
