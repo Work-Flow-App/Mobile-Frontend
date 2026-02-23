@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
-import 'package:mobile_frontend/widgets/floow_logo.dart';
+import 'package:mobile_frontend/widgets/brand_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -63,11 +63,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Container(
                 color: const Color(0xFF121212),
                 child: const Center(
-                  child: FloowLogo(
+                  // Using the updated BrandLogo with a vertical axis
+                  child: BrandLogo(
                     isAppBar: false,
-                    textColor: Colors.white,
-                    iconSize: 60,
-                    fontSize: 40,
+                    iconSize: 65,
+                    textSvgWidth:
+                        250, // Adjust this size to fit your SVG perfectly
+                    axis: Axis.vertical,
                   ),
                 ),
               ),
