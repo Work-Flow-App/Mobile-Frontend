@@ -560,6 +560,8 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
     if (type == 0 || type == 1) {
       final img = await ImagePicker().pickImage(
         source: type == 0 ? ImageSource.camera : ImageSource.gallery,
+        imageQuality: 70, // Compresses to 70% quality (drastically reduces MBs)
+        maxWidth: 1920, // Resizes large 4K photos to HD
       );
       path = img?.path;
     } else {
