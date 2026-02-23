@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Required for SystemUiOverlayStyle
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart'; // Import GoRouter
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/floow_logo.dart';
@@ -18,87 +18,138 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Explicitly cast the watch to AuthState
     final AuthState authState = ref.watch(authNotifierProvider);
 
-    // 2. Add <AuthState> to ref.listen to fix the "Object" error
-    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
-      // Now 'next' is correctly recognized as AuthState
-      if (next.status == AuthStatus.unauthenticated &&
-          next.errorMessage != null) {
-        if (next.errorMessage!.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(next.errorMessage!),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    });
-
-    final isLoading = authState.status == AuthStatus.loading;
-
-    return Scaffold(
-      // ... (Rest of your UI code remains exactly the same)
-      body: Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const FloowLogo(
-                  isAppBar: false,
-                  textColor: Colors.black,
-                  iconSize: 50,
-                  fontSize: 32,
-                ),
-                const SizedBox(height: 40),
-                Text("Login", style: Theme.of(context).textTheme.displayLarge),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: usernameController,
-                  decoration: const InputDecoration(labelText: "Username"),
-                  enabled: !isLoading,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(labelText: "Password"),
-                  obscureText: true,
-                  enabled: !isLoading,
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLoading
-                        ? null
-                        : () {
-                            ref
-                                .read(authNotifierProvider.notifier)
-                                .login(
-                                  usernameController.text,
-                                  passwordController.text,
-                                );
-                          },
-                    child: isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Login"),
+    // This ensures your status bar icons (battery, wifi) are white
+    // so they are visible against the dark background.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent, // Makes the status bar transparent
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        // We REMOVE the SafeArea here so the Stack starts from the very top
+        body: Stack(
+          children: [
+            // 1. Dark Background extending to the top
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: MediaQuery.of(context).size.height * 0.35,
+              child: Container(
+                decoration: const BoxDecoration(color: Color(0xFF121212)),
+                child: const Center(
+                  child: FloowLogo(
+                    isAppBar: false,
+                    textColor: Colors.white,
+                    iconSize: 60,
+                    fontSize: 40,
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.push('/signup'),
-                  child: const Text("Don't have an account? Sign up"),
+              ),
+            ),
+
+            // 2. The White "Sheet" Layer
+            Positioned.fill(
+              top: MediaQuery.of(context).size.height * 0.28,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(40),
+                    topRight: Radius.circular(40),
+                  ),
                 ),
-              ],
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 40,
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Welcome Back!",
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Enter your valid username and password\nto access your account.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 40),
+
+                      _buildTextField(
+                        label: "Username",
+                        hint: "username",
+                        controller: usernameController,
+                      ),
+                      const SizedBox(height: 20),
+
+                      _buildTextField(
+                        label: "Password",
+                        hint: "••••••••••••",
+                        controller: passwordController,
+                        isPassword: true,
+                      ),
+                      const SizedBox(height: 30),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: () {}, // Add your logic here
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text("Log in"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper for text fields (same as previous response)
+  Widget _buildTextField({
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    bool isPassword = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: isPassword,
+          decoration: InputDecoration(
+            hintText: hint,
+            filled: true,
+            fillColor: const Color(0xFFF8F8F8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
