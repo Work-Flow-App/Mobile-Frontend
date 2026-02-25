@@ -22,11 +22,12 @@ class FilterBar extends ConsumerWidget {
         children: [
           _buildFilterChip(context, ref, "All", null, currentFilter == null),
           // Iterate over the specific enum order you prefer
-          _buildEnumChip(context, ref, StepStatus.INITIATED, currentFilter),
-          _buildEnumChip(context, ref, StepStatus.PENDING, currentFilter),
-          _buildEnumChip(context, ref, StepStatus.ONGOING, currentFilter),
           _buildEnumChip(context, ref, StepStatus.STARTED, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.NOT_STARTED, currentFilter),
           _buildEnumChip(context, ref, StepStatus.COMPLETED, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.PENDING, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.INITIATED, currentFilter),
+          _buildEnumChip(context, ref, StepStatus.ONGOING, currentFilter),
           _buildEnumChip(context, ref, StepStatus.SKIPPED, currentFilter),
         ],
       ),
