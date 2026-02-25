@@ -14,7 +14,11 @@ class JobService {
     try {
       final response = await _dio.get('/worker/job-workflow-steps');
       final List data = response.data;
-      return data.map((json) => JobStep.fromJson(json)).toList();
+      return data
+          .map((json) => JobStep.fromJson(json))
+          .toList()
+          .reversed
+          .toList();
     } catch (e) {
       throw Exception('Failed to load assigned steps: $e');
     }
