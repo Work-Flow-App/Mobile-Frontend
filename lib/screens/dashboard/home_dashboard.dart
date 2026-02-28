@@ -13,21 +13,11 @@ class HomeDashboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watch the steps provider to trigger loading/errors early
     final stepsAsync = ref.watch(assignedStepsFutureProvider);
     final authState = ref.watch(authNotifierProvider);
     final isAdmin = authState.role == 'ADMIN';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Tasks"), // Renamed from "My Jobs"
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
-          ),
-        ],
-      ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -65,14 +55,54 @@ class HomeDashboard extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (allSteps) {
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              if (constraints.maxWidth > 700) {
-                return const TabletSplitView();
-              } else {
-                return const MobileStepListView();
-              }
+          // 2. Wrap your layout builder in a NestedScrollView
+          return NestedScrollView(
+            headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+              return <Widget>[
+                // 3. Use SliverAppBar for the floating effect
+                SliverAppBar(
+                  title: const Text(
+                    "My Tasks",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  floating: true, // Appears as soon as you scroll up
+                  snap: true, // Snaps fully into view when scrolling up
+                  pinned:
+                      false, // Scrolls completely out of view when scrolling down
+                  backgroundColor: Theme.of(
+                    context,
+                  ).scaffoldBackgroundColor, // Matches app background
+                  foregroundColor:
+                      Colors.black, // Ensures text and icons are visible
+                  elevation: 2, // Gives a slight shadow when floating
+                  shadowColor: Colors.black.withOpacity(0.3),
+                  actions: const [
+                    Padding(
+                      padding: EdgeInsets.only(right: 16.0),
+                      child: AppBranding(
+                        color: Colors
+                            .black, // Changed to black to match the new light app bar
+                        size: 24,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ];
             },
+            // The body contains your standard Mobile/Tablet layouts
+            body: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 700) {
+                  return const TabletSplitView();
+                } else {
+                  return const MobileStepListView();
+                }
+              },
+            ),
           );
         },
       ),
