@@ -5,59 +5,69 @@ import 'package:mobile_frontend/providers/job/job_provider.dart';
 import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
 import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
+import 'dart:ui';
 // Import the new list view
 import 'assigned_step_list_view.dart';
 
 class HomeDashboard extends ConsumerWidget {
   const HomeDashboard({super.key});
-
-  // Helper method to show the menu in a bottom sheet instead of a drawer
   void _showMenuBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // Important for landscape
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      clipBehavior: Clip
-          .antiAliasWithSaveLayer, // Ensures the header respects the rounded corners
+      clipBehavior: Clip.antiAliasWithSaveLayer,
       builder: (context) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min, // Wraps content size tightly
-            children: [
-              UserAccountsDrawerHeader(
-                margin: EdgeInsets.zero,
-                decoration: const BoxDecoration(color: Colors.black),
-                accountName: Text(isAdmin ? "Admin User" : "Worker User"),
-                accountEmail: const Text("user@example.com"),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: Text(
-                    isAdmin ? "A" : "W",
-                    style: const TextStyle(fontSize: 24, color: Colors.black),
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.4,
+            minChildSize: 0.3,
+            maxChildSize: 0.8,
+            builder: (context, scrollController) {
+              return ListView(
+                controller: scrollController,
+                padding: EdgeInsets.zero,
+                children: [
+                  UserAccountsDrawerHeader(
+                    margin: EdgeInsets.zero,
+                    decoration: const BoxDecoration(color: Colors.black),
+                    accountName: Text(isAdmin ? "Admin User" : "Worker User"),
+                    accountEmail: const Text("user@example.com"),
+                    currentAccountPicture: CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        isAdmin ? "A" : "W",
+                        style: const TextStyle(
+                          fontSize: 24,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.task_alt),
-                title: const Text('My Tasks'),
-                selected: true,
-                onTap: () => Navigator.pop(context), // Close the bottom sheet
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () {
-                  Navigator.pop(context); // Close the bottom sheet
-                  ref
-                      .read(authNotifierProvider.notifier)
-                      .logout(); // Trigger logout
-                },
-              ),
-            ],
+                  ListTile(
+                    leading: const Icon(Icons.task_alt),
+                    title: const Text('My Tasks'),
+                    selected: true,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text(
+                      'Logout',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(authNotifierProvider.notifier).logout();
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              );
+            },
           ),
         );
       },
