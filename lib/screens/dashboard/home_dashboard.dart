@@ -11,6 +11,59 @@ import 'assigned_step_list_view.dart';
 class HomeDashboard extends ConsumerWidget {
   const HomeDashboard({super.key});
 
+  // Helper method to show the menu in a bottom sheet instead of a drawer
+  void _showMenuBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      clipBehavior: Clip
+          .antiAliasWithSaveLayer, // Ensures the header respects the rounded corners
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Wraps content size tightly
+            children: [
+              UserAccountsDrawerHeader(
+                margin: EdgeInsets.zero,
+                decoration: const BoxDecoration(color: Colors.black),
+                accountName: Text(isAdmin ? "Admin User" : "Worker User"),
+                accountEmail: const Text("user@example.com"),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Text(
+                    isAdmin ? "A" : "W",
+                    style: const TextStyle(fontSize: 24, color: Colors.black),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.task_alt),
+                title: const Text('My Tasks'),
+                selected: true,
+                onTap: () => Navigator.pop(context), // Close the bottom sheet
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  ref
+                      .read(authNotifierProvider.notifier)
+                      .logout(); // Trigger logout
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stepsAsync = ref.watch(assignedStepsFutureProvider);
@@ -18,48 +71,27 @@ class HomeDashboard extends ConsumerWidget {
     final isAdmin = authState.role == 'ADMIN';
 
     return Scaffold(
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(color: Colors.black),
-              accountName: Text(isAdmin ? "Admin User" : "Worker User"),
-              accountEmail: const Text("user@example.com"),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  isAdmin ? "A" : "W",
-                  style: const TextStyle(fontSize: 24, color: Colors.black),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.task_alt),
-              title: const Text('My Tasks'),
-              selected: true,
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(authNotifierProvider.notifier).logout();
-              },
-            ),
-          ],
-        ),
+      // 1. Position the FAB at the bottom left
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
+
+      // 2. Add the FAB
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showMenuBottomSheet(context, ref, isAdmin),
+        backgroundColor: Colors.black, // Match your app branding
+        foregroundColor: Colors.white,
+        elevation: 4,
+        child: const Icon(Icons.menu),
       ),
+
       body: stepsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (allSteps) {
-          // 2. Wrap your layout builder in a NestedScrollView
+          // Wrap your layout builder in a NestedScrollView
           return NestedScrollView(
             headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
               return <Widget>[
-                // 3. Use SliverAppBar for the floating effect
+                // Use SliverAppBar for the floating effect
                 SliverAppBar(
                   title: const Text(
                     "My Tasks",
