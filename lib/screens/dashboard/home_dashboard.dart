@@ -90,6 +90,14 @@ class HomeDashboard extends ConsumerWidget {
                       ),
                     ),
                   ],
+                  bottom: const PreferredSize(
+                    // Adjust this height if your FilterBar is taller or shorter
+                    preferredSize: Size.fromHeight(60.0),
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 8.0),
+                      child: FilterBar(),
+                    ),
+                  ),
                 ),
               ];
             },
@@ -115,12 +123,7 @@ class MobileStepListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        FilterBar(), // Updates the stepStatusFilterProvider
-        Expanded(child: AssignedStepListView()),
-      ],
-    );
+    return const AssignedStepListView();
   }
 }
 
@@ -148,15 +151,7 @@ class TabletSplitView extends ConsumerWidget {
 
     return Row(
       children: [
-        const SizedBox(
-          width: 350,
-          child: Column(
-            children: [
-              FilterBar(),
-              Expanded(child: AssignedStepListView(isTablet: true)),
-            ],
-          ),
-        ),
+        const SizedBox(width: 350, child: AssignedStepListView(isTablet: true)),
         const VerticalDivider(width: 1),
         Expanded(
           child: Container(color: Colors.grey[50], child: detailView),
