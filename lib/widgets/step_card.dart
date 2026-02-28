@@ -19,12 +19,15 @@ class StepCard extends StatelessWidget {
     final statusColor = step.status.color;
     final statusBgColor = step.status.backgroundColor;
 
-    // Formatting date if available
-    final dateStr = step.startedAt != null
-        ? "Started: ${DateFormat('MMM dd, HH:mm').format(step.startedAt!)}"
-        : (step.completedAt != null
-              ? "Completed: ${DateFormat('MMM dd, HH:mm').format(step.completedAt!)}"
-              : "Order #${step.orderIndex}");
+    // Formatting date if available, otherwise it remains null
+    String? dateStr;
+    if (step.startedAt != null) {
+      dateStr =
+          "Started: ${DateFormat('MMM dd, HH:mm').format(step.startedAt!)}";
+    } else if (step.completedAt != null) {
+      dateStr =
+          "Completed: ${DateFormat('MMM dd, HH:mm').format(step.completedAt!)}";
+    }
 
     return Card(
       elevation: 2,
@@ -87,19 +90,23 @@ class StepCard extends StatelessWidget {
                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
                 ),
               ],
-              const SizedBox(height: 12),
-              Divider(height: 1, color: Colors.grey[200]),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Text(
-                    dateStr,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ),
+
+              // Only show the Divider and the Date Row if dateStr is not null
+              if (dateStr != null) ...[
+                const SizedBox(height: 12),
+                Divider(height: 1, color: Colors.grey[200]),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                    const SizedBox(width: 4),
+                    Text(
+                      dateStr,
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

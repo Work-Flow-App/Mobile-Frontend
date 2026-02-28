@@ -20,28 +20,48 @@ class AssignedStepListView extends ConsumerWidget {
       return asyncValue.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text("Error: $err")),
-        data: (data) => const Center(child: Text("No steps found.")),
+        data: (data) => RefreshIndicator(
+          onRefresh: () async =>
+              ref.refresh(assignedStepsFutureProvider.future),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverFillRemaining(
+                child: const Center(
+                  child: Text("No steps found."),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filteredSteps.length,
-      itemBuilder: (context, index) {
-        final step = filteredSteps[index];
-        return StepCard(
-          step: step,
-          isSelected: isTablet && step.id == selectedId,
-          onTap: () {
-            if (isTablet) {
-              ref.read(selectedStepIdProvider.notifier).state = step.id;
-            } else {
-              // --- DIRECT NAVIGATION TO STEP DETAIL ---
-              context.push('/step-detail', extra: step);
-            }
-          },
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        // This forces Riverpod to re-fetch the data from the API
+        return await ref.refresh(assignedStepsFutureProvider.future);
       },
+      child: ListView.builder(
+        // Add physics to ensure the list is always scrollable (needed for pull-to-refresh to work even if the list is short)
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: filteredSteps.length,
+        itemBuilder: (context, index) {
+          final step = filteredSteps[index];
+          return StepCard(
+            step: step,
+            isSelected: isTablet && step.id == selectedId,
+            onTap: () {
+              if (isTablet) {
+                ref.read(selectedStepIdProvider.notifier).state = step.id;
+              } else {
+                context.push('/step-detail', extra: step);
+              }
+            },
+          );
+        },
+      ),
     );
   }
 }
