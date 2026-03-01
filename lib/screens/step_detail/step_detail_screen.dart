@@ -752,7 +752,18 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
               ),
               items: StepDiscussionType.values
                   .where((e) => e != StepDiscussionType.UNKNOWN)
-                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
+                  .map(
+                    (t) => DropdownMenuItem(
+                      value: t,
+                      child: Row(
+                        children: [
+                          Icon(Icons.circle, size: 12, color: t.color),
+                          const SizedBox(width: 8),
+                          Text(t.label),
+                        ],
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (val) => setState(() => _selectedType = val!),
             ),
