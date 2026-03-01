@@ -21,21 +21,6 @@ class StepDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
-  final commentController = TextEditingController();
-
-  // UI State for Filters
-  bool _isAttachmentOnlyMode = false;
-  Set<StepDiscussionType> _selectedFilterTypes = {};
-
-  // UI State for Input
-  StepDiscussionType _inputType = StepDiscussionType.GENERAL;
-
-  @override
-  void dispose() {
-    commentController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenState = ref.watch(stepDetailControllerProvider(widget.step));
@@ -55,6 +40,13 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          _showCommentsBottomSheet(context, currentStep, canEdit);
+        },
+        icon: const Icon(Icons.comment),
+        label: const Text("Activity, Comments & Attachments"),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -77,12 +69,13 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   }
 
   Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
-    return Column(
-      children: [
-        StepInfoSection(step: step, canEdit: canEdit, isLoading: isLoading),
-        const Divider(height: 1),
-        Expanded(child: _buildTimelineSection(step, canEdit)),
-      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 100), // Space for the FAB
+      child: StepInfoSection(
+        step: step,
+        canEdit: canEdit,
+        isLoading: isLoading,
+      ),
     );
   }
 
@@ -104,77 +97,199 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
         Expanded(
           child: Container(
             color: Colors.grey[50],
-            child: _buildTimelineSection(step, canEdit),
+            child: TimelineBottomSheet(step: step, canEdit: canEdit),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTimelineSection(JobStep step, bool canEdit) {
-    final timelineAsync = ref.watch(stepTimelineProvider(step.id));
+  void _showCommentsBottomSheet(
+    BuildContext context,
+    JobStep step,
+    bool canEdit,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea:
+          true, // FIX: Prevents modal from overlapping with top notches on big screens
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.65,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  children: [
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: TimelineBottomSheet(
+                        step: step,
+                        canEdit: canEdit,
+                        scrollController: scrollController,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+// =========================================================================
+// WIDGET: The Bottom Sheet Content
+// =========================================================================
+class TimelineBottomSheet extends ConsumerStatefulWidget {
+  final JobStep step;
+  final bool canEdit;
+  final ScrollController? scrollController;
+
+  const TimelineBottomSheet({
+    super.key,
+    required this.step,
+    required this.canEdit,
+    this.scrollController,
+  });
+
+  @override
+  ConsumerState<TimelineBottomSheet> createState() =>
+      _TimelineBottomSheetState();
+}
+
+class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
+  final commentController = TextEditingController();
+
+  // UI State for Filters
+  bool _isAttachmentOnlyMode = false;
+  Set<StepDiscussionType> _selectedFilterTypes = {};
+
+  // UI State for Input
+  StepDiscussionType _inputType = StepDiscussionType.GENERAL;
+
+  @override
+  void dispose() {
+    commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timelineAsync = ref.watch(stepTimelineProvider(widget.step.id));
     final controller = ref.read(
       stepDetailControllerProvider(widget.step).notifier,
     );
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
-    return Column(
-      children: [
-        // 1. Advanced Filter Bar (Multi-Select + Attachments Toggle)
-        _buildAdvancedFilterBar(),
+    // Extracted list building logic so we can reuse it cleanly in the LayoutBuilder
+    Widget buildListContent() {
+      return Container(
+        color: Colors.grey[50],
+        child: timelineAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => Center(child: Text("Error: $err")),
+          data: (events) {
+            final filteredEvents = _applyFilters(events);
 
-        // 2. Timeline List OR Gallery Grid
-        Expanded(
-          child: Container(
-            color: Colors.grey[50],
-            child: timelineAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text("Error: $err")),
-              data: (events) {
-                final filteredEvents = _applyFilters(events);
+            if (filteredEvents.isEmpty) {
+              return RefreshIndicator(
+                onRefresh: controller.refreshTimeline,
+                child: ListView(
+                  controller: widget.scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 100),
+                    Center(child: Text("No items match your filter.")),
+                  ],
+                ),
+              );
+            }
 
-                if (filteredEvents.isEmpty) {
-                  return RefreshIndicator(
-                    onRefresh: controller.refreshTimeline,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 100),
-                        Center(child: Text("No items match your filter.")),
-                      ],
-                    ),
-                  );
-                }
+            if (_isAttachmentOnlyMode) {
+              return RefreshIndicator(
+                onRefresh: controller.refreshTimeline,
+                child: _buildGalleryView(
+                  filteredEvents,
+                  widget.scrollController,
+                ),
+              );
+            }
 
-                // Show Gallery if toggle is ON
-                if (_isAttachmentOnlyMode) {
-                  return RefreshIndicator(
-                    onRefresh: controller.refreshTimeline,
-                    child: _buildGalleryView(filteredEvents),
-                  );
-                }
-
-                // Otherwise, show standard List
-                return RefreshIndicator(
-                  onRefresh: controller.refreshTimeline,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredEvents.length,
-                    itemBuilder: (context, index) => TimelineItemWidget(
-                      event: filteredEvents[index] as TimelineEvent,
-                      isLast: index == filteredEvents.length - 1,
-                      currentWorkerId: currentWorkerId,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+            return RefreshIndicator(
+              onRefresh: controller.refreshTimeline,
+              child: ListView.builder(
+                controller: widget.scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredEvents.length,
+                itemBuilder: (context, index) => TimelineItemWidget(
+                  event: filteredEvents[index] as TimelineEvent,
+                  isLast: index == filteredEvents.length - 1,
+                  currentWorkerId: currentWorkerId,
+                ),
+              ),
+            );
+          },
         ),
+      );
+    }
 
-        // 3. Input Area (Hide when viewing gallery for clarity)
-        if (canEdit && !_isAttachmentOnlyMode) _buildInputArea(controller),
-      ],
+    // FIX: LayoutBuilder prevents crash on screen rotation by falling back to scrolling
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isTightSpace = constraints.maxHeight < 250;
+
+        if (isTightSpace) {
+          return SingleChildScrollView(
+            controller: widget.scrollController,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildAdvancedFilterBar(),
+                SizedBox(
+                  height: 300, // Fixed height fallback so it doesn't disappear
+                  child: buildListContent(),
+                ),
+                if (widget.canEdit && !_isAttachmentOnlyMode)
+                  _buildInputArea(controller),
+              ],
+            ),
+          );
+        }
+
+        // Standard layout with Expanded (for portrait / regular screens)
+        return Column(
+          children: [
+            _buildAdvancedFilterBar(),
+            Expanded(child: buildListContent()),
+            if (widget.canEdit && !_isAttachmentOnlyMode)
+              _buildInputArea(controller),
+          ],
+        );
+      },
     );
   }
 
@@ -187,7 +302,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       ),
       child: Row(
         children: [
-          // Multi-Select Filter Button
           Expanded(
             child: InkWell(
               onTap: _showMultiSelectFilterDialog,
@@ -221,7 +335,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // Toggle Gallery
           const Text(
             "Attachments Only",
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
@@ -236,12 +349,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  // Multi-Select Dialog Method
   void _showMultiSelectFilterDialog() {
     showDialog(
       context: context,
       builder: (context) {
-        // StatefulBuilder is required to update checkboxes inside a dialog
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -288,8 +399,8 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    setState(() {}); // Update the main screen to apply filters
+                    Navigator.pop(context);
+                    setState(() {});
                   },
                   child: const Text("Apply"),
                 ),
@@ -301,11 +412,15 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  Widget _buildGalleryView(List<dynamic> events) {
+  Widget _buildGalleryView(
+    List<dynamic> events,
+    ScrollController? scrollController,
+  ) {
     return GridView.builder(
+      controller: scrollController,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // 2 items per row for mobile
+        crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         childAspectRatio: 0.8,
@@ -407,8 +522,8 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       child: SafeArea(
         top: false,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Select Type Row
             Row(
               children: [
                 const Text(
@@ -446,7 +561,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            // Text Input Row
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -456,6 +570,8 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                 ),
                 Expanded(
                   child: Container(
+                    // FIX: Prevent multiline input from growing infinitely and breaking the column
+                    constraints: const BoxConstraints(maxHeight: 120),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(24),
@@ -507,18 +623,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   List<dynamic> _applyFilters(List<dynamic> events) {
     return events.where((e) {
       if (e is! TimelineEvent) return false;
-
-      // 1. Attachments Only Filter
-      if (_isAttachmentOnlyMode && !e.isAttachment) {
-        return false;
-      }
-
-      // 2. Discussion Type Filter (Multi-select)
+      if (_isAttachmentOnlyMode && !e.isAttachment) return false;
       if (_selectedFilterTypes.isNotEmpty &&
-          !_selectedFilterTypes.contains(e.discussionType)) {
+          !_selectedFilterTypes.contains(e.discussionType))
         return false;
-      }
-
       return true;
     }).toList();
   }
@@ -542,6 +650,9 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   }
 }
 
+// =========================================================================
+// WIDGET: Attachment Sheet
+// =========================================================================
 class _AttachmentUploadSheet extends StatefulWidget {
   final Function(String, StepDiscussionType, String) onUpload;
   const _AttachmentUploadSheet({required this.onUpload});
@@ -560,8 +671,8 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
     if (type == 0 || type == 1) {
       final img = await ImagePicker().pickImage(
         source: type == 0 ? ImageSource.camera : ImageSource.gallery,
-        imageQuality: 70, // Compresses to 70% quality (drastically reduces MBs)
-        maxWidth: 1920, // Resizes large 4K photos to HD
+        imageQuality: 70,
+        maxWidth: 1920,
       );
       path = img?.path;
     } else {
@@ -583,98 +694,110 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
         right: 16,
         top: 16,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Upload Attachment",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-
-          if (_selectedPath == null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildUploadOption(
-                  Icons.camera_alt,
-                  Colors.blue,
-                  "Camera",
-                  () => _pickFile(0),
+      // FIX: Added SingleChildScrollView so the attachment options and keyboard can scroll
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Upload Attachment",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            if (_selectedPath == null)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildUploadOption(
+                    Icons.camera_alt,
+                    Colors.blue,
+                    "Camera",
+                    () => _pickFile(0),
+                  ),
+                  _buildUploadOption(
+                    Icons.photo_library,
+                    Colors.purple,
+                    "Gallery",
+                    () => _pickFile(1),
+                  ),
+                  _buildUploadOption(
+                    Icons.insert_drive_file,
+                    Colors.orange,
+                    "File",
+                    () => _pickFile(2),
+                  ),
+                ],
+              )
+            else
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.check_circle, color: Colors.green),
+                title: Text(
+                  _selectedPath!.split('/').last,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                _buildUploadOption(
-                  Icons.photo_library,
-                  Colors.purple,
-                  "Gallery",
-                  () => _pickFile(1),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() => _selectedPath = null),
                 ),
-                _buildUploadOption(
-                  Icons.insert_drive_file,
-                  Colors.orange,
-                  "File",
-                  () => _pickFile(2),
+              ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<StepDiscussionType>(
+              value: _selectedType,
+              decoration: const InputDecoration(
+                labelText: "Attachment Type",
+                border: OutlineInputBorder(),
+              ),
+              items: StepDiscussionType.values
+                  .where((e) => e != StepDiscussionType.UNKNOWN)
+                  .map(
+                    (t) => DropdownMenuItem(
+                      value: t,
+                      child: Row(
+                        children: [
+                          Icon(Icons.circle, size: 12, color: t.color),
+                          const SizedBox(width: 8),
+                          Text(t.label),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (val) => setState(() => _selectedType = val!),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descController,
+              decoration: const InputDecoration(
+                labelText: "Description (Optional)",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-              ],
-            )
-          else
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.check_circle, color: Colors.green),
-              title: Text(
-                _selectedPath!.split('/').last,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => setState(() => _selectedPath = null),
+                onPressed: _selectedPath == null
+                    ? null
+                    : () {
+                        widget.onUpload(
+                          _selectedPath!,
+                          _selectedType,
+                          _descController.text,
+                        );
+                      },
+                child: const Text("Upload"),
               ),
             ),
-
-          const SizedBox(height: 16),
-          DropdownButtonFormField<StepDiscussionType>(
-            value: _selectedType,
-            decoration: const InputDecoration(
-              labelText: "Attachment Type",
-              border: OutlineInputBorder(),
-            ),
-            items: StepDiscussionType.values
-                .where((e) => e != StepDiscussionType.UNKNOWN)
-                .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
-                .toList(),
-            onChanged: (val) => setState(() => _selectedType = val!),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _descController,
-            decoration: const InputDecoration(
-              labelText: "Description (Optional)",
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              onPressed: _selectedPath == null
-                  ? null
-                  : () {
-                      widget.onUpload(
-                        _selectedPath!,
-                        _selectedType,
-                        _descController.text,
-                      );
-                    },
-              child: const Text("Upload"),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
