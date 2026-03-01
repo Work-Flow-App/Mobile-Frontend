@@ -41,7 +41,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           ),
         ],
       ),
-      // 1. ADDED A BUTTON TO TRIGGER THE POPUP
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           _showCommentsBottomSheet(context, currentStep, canEdit);
@@ -69,7 +68,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  // 2. SIMPLIFIED MOBILE LAYOUT (Just the scrollable info)
   Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 100), // Space for the FAB
@@ -96,7 +94,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           ),
         ),
         const VerticalDivider(width: 1),
-        // On large screens, we can just show it side-by-side instead of a popup
         Expanded(
           child: Container(
             color: Colors.grey[50],
@@ -107,7 +104,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  // 3. THE TRIGGER FUNCTION FOR THE LINKEDIN-STYLE POPUP
   void _showCommentsBottomSheet(
     BuildContext context,
     JobStep step,
@@ -115,46 +111,49 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   ) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // This allows the sheet to go full screen
-      backgroundColor:
-          Colors.transparent, // Makes the rounded corners look correct
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.65, // Starts at 65% of screen height
-          minChildSize: 0.4, // Can be dragged down to 40% before closing
-          maxChildSize: 0.95, // Expands almost to the top
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Column(
-                children: [
-                  // The drag handle
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 12),
-                      width: 40,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(10),
+        // FIX 1: Moved the keyboard padding here to wrap the DraggableScrollableSheet
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.65,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  children: [
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
                     ),
-                  ),
-                  // The actual comments/timeline content
-                  Expanded(
-                    child: TimelineBottomSheet(
-                      step: step,
-                      canEdit: canEdit,
-                      scrollController: scrollController,
+                    Expanded(
+                      child: TimelineBottomSheet(
+                        step: step,
+                        canEdit: canEdit,
+                        scrollController: scrollController,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          },
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -162,7 +161,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
 }
 
 // =========================================================================
-// NEW WIDGET: The Bottom Sheet Content (Extracted to handle its own state)
+// NEW WIDGET: The Bottom Sheet Content
 // =========================================================================
 class TimelineBottomSheet extends ConsumerStatefulWidget {
   final JobStep step;
@@ -205,77 +204,70 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     );
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        children: [
-          // 1. Advanced Filter Bar
-          _buildAdvancedFilterBar(),
+    // FIX 2: Removed the Padding wrapper here, returning Column directly
+    return Column(
+      children: [
+        // 1. Advanced Filter Bar
+        _buildAdvancedFilterBar(),
 
-          // 2. Timeline List OR Gallery Grid
-          Expanded(
-            child: Container(
-              color: Colors.grey[50],
-              child: timelineAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => Center(child: Text("Error: $err")),
-                data: (events) {
-                  final filteredEvents = _applyFilters(events);
+        // 2. Timeline List OR Gallery Grid
+        Expanded(
+          child: Container(
+            color: Colors.grey[50],
+            child: timelineAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => Center(child: Text("Error: $err")),
+              data: (events) {
+                final filteredEvents = _applyFilters(events);
 
-                  if (filteredEvents.isEmpty) {
-                    return RefreshIndicator(
-                      onRefresh: controller.refreshTimeline,
-                      child: ListView(
-                        controller: widget.scrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 100),
-                          Center(child: Text("No items match your filter.")),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (_isAttachmentOnlyMode) {
-                    return RefreshIndicator(
-                      onRefresh: controller.refreshTimeline,
-                      child: _buildGalleryView(
-                        filteredEvents,
-                        widget.scrollController,
-                      ),
-                    );
-                  }
-
+                if (filteredEvents.isEmpty) {
                   return RefreshIndicator(
                     onRefresh: controller.refreshTimeline,
-                    child: ListView.builder(
-                      controller:
-                          widget.scrollController, // Crucial for dragging!
-                      padding: const EdgeInsets.all(16),
-                      itemCount: filteredEvents.length,
-                      itemBuilder: (context, index) => TimelineItemWidget(
-                        event: filteredEvents[index] as TimelineEvent,
-                        isLast: index == filteredEvents.length - 1,
-                        currentWorkerId: currentWorkerId,
-                      ),
+                    child: ListView(
+                      controller: widget.scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 100),
+                        Center(child: Text("No items match your filter.")),
+                      ],
                     ),
                   );
-                },
-              ),
+                }
+
+                if (_isAttachmentOnlyMode) {
+                  return RefreshIndicator(
+                    onRefresh: controller.refreshTimeline,
+                    child: _buildGalleryView(
+                      filteredEvents,
+                      widget.scrollController,
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: controller.refreshTimeline,
+                  child: ListView.builder(
+                    controller: widget.scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredEvents.length,
+                    itemBuilder: (context, index) => TimelineItemWidget(
+                      event: filteredEvents[index] as TimelineEvent,
+                      isLast: index == filteredEvents.length - 1,
+                      currentWorkerId: currentWorkerId,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
+        ),
 
-          // 3. Input Area
-          if (widget.canEdit && !_isAttachmentOnlyMode)
-            _buildInputArea(controller),
-        ],
-      ),
+        // 3. Input Area
+        if (widget.canEdit && !_isAttachmentOnlyMode)
+          _buildInputArea(controller),
+      ],
     );
   }
-
-  // --- All the helper methods remain exactly the same, moved inside this state class ---
 
   Widget _buildAdvancedFilterBar() {
     return Container(
@@ -505,7 +497,9 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
       padding: const EdgeInsets.all(12),
       child: SafeArea(
         top: false,
+        // FIX 3: Added mainAxisSize to constrain the column height
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
