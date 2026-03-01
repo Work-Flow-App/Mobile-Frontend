@@ -21,21 +21,6 @@ class StepDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
-  final commentController = TextEditingController();
-
-  // UI State for Filters
-  bool _isAttachmentOnlyMode = false;
-  Set<StepDiscussionType> _selectedFilterTypes = {};
-
-  // UI State for Input
-  StepDiscussionType _inputType = StepDiscussionType.GENERAL;
-
-  @override
-  void dispose() {
-    commentController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenState = ref.watch(stepDetailControllerProvider(widget.step));
@@ -55,6 +40,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
           ),
         ],
+      ),
+      // 1. ADDED A BUTTON TO TRIGGER THE POPUP
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          _showCommentsBottomSheet(context, currentStep, canEdit);
+        },
+        icon: const Icon(Icons.comment),
+        label: const Text("Activity, Comments & Attachments"),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -76,13 +69,15 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
+  // 2. SIMPLIFIED MOBILE LAYOUT (Just the scrollable info)
   Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
-    return Column(
-      children: [
-        StepInfoSection(step: step, canEdit: canEdit, isLoading: isLoading),
-        const Divider(height: 1),
-        Expanded(child: _buildTimelineSection(step, canEdit)),
-      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 100), // Space for the FAB
+      child: StepInfoSection(
+        step: step,
+        canEdit: canEdit,
+        isLoading: isLoading,
+      ),
     );
   }
 
@@ -101,82 +96,186 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           ),
         ),
         const VerticalDivider(width: 1),
+        // On large screens, we can just show it side-by-side instead of a popup
         Expanded(
           child: Container(
             color: Colors.grey[50],
-            child: _buildTimelineSection(step, canEdit),
+            child: TimelineBottomSheet(step: step, canEdit: canEdit),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTimelineSection(JobStep step, bool canEdit) {
-    final timelineAsync = ref.watch(stepTimelineProvider(step.id));
+  // 3. THE TRIGGER FUNCTION FOR THE LINKEDIN-STYLE POPUP
+  void _showCommentsBottomSheet(
+    BuildContext context,
+    JobStep step,
+    bool canEdit,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // This allows the sheet to go full screen
+      backgroundColor:
+          Colors.transparent, // Makes the rounded corners look correct
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65, // Starts at 65% of screen height
+          minChildSize: 0.4, // Can be dragged down to 40% before closing
+          maxChildSize: 0.95, // Expands almost to the top
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // The drag handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  // The actual comments/timeline content
+                  Expanded(
+                    child: TimelineBottomSheet(
+                      step: step,
+                      canEdit: canEdit,
+                      scrollController: scrollController,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// =========================================================================
+// NEW WIDGET: The Bottom Sheet Content (Extracted to handle its own state)
+// =========================================================================
+class TimelineBottomSheet extends ConsumerStatefulWidget {
+  final JobStep step;
+  final bool canEdit;
+  final ScrollController? scrollController;
+
+  const TimelineBottomSheet({
+    super.key,
+    required this.step,
+    required this.canEdit,
+    this.scrollController,
+  });
+
+  @override
+  ConsumerState<TimelineBottomSheet> createState() =>
+      _TimelineBottomSheetState();
+}
+
+class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
+  final commentController = TextEditingController();
+
+  // UI State for Filters
+  bool _isAttachmentOnlyMode = false;
+  Set<StepDiscussionType> _selectedFilterTypes = {};
+
+  // UI State for Input
+  StepDiscussionType _inputType = StepDiscussionType.GENERAL;
+
+  @override
+  void dispose() {
+    commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timelineAsync = ref.watch(stepTimelineProvider(widget.step.id));
     final controller = ref.read(
       stepDetailControllerProvider(widget.step).notifier,
     );
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
-    return Column(
-      children: [
-        // 1. Advanced Filter Bar (Multi-Select + Attachments Toggle)
-        _buildAdvancedFilterBar(),
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        children: [
+          // 1. Advanced Filter Bar
+          _buildAdvancedFilterBar(),
 
-        // 2. Timeline List OR Gallery Grid
-        Expanded(
-          child: Container(
-            color: Colors.grey[50],
-            child: timelineAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text("Error: $err")),
-              data: (events) {
-                final filteredEvents = _applyFilters(events);
+          // 2. Timeline List OR Gallery Grid
+          Expanded(
+            child: Container(
+              color: Colors.grey[50],
+              child: timelineAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, _) => Center(child: Text("Error: $err")),
+                data: (events) {
+                  final filteredEvents = _applyFilters(events);
 
-                if (filteredEvents.isEmpty) {
+                  if (filteredEvents.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: controller.refreshTimeline,
+                      child: ListView(
+                        controller: widget.scrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 100),
+                          Center(child: Text("No items match your filter.")),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (_isAttachmentOnlyMode) {
+                    return RefreshIndicator(
+                      onRefresh: controller.refreshTimeline,
+                      child: _buildGalleryView(
+                        filteredEvents,
+                        widget.scrollController,
+                      ),
+                    );
+                  }
+
                   return RefreshIndicator(
                     onRefresh: controller.refreshTimeline,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 100),
-                        Center(child: Text("No items match your filter.")),
-                      ],
+                    child: ListView.builder(
+                      controller:
+                          widget.scrollController, // Crucial for dragging!
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredEvents.length,
+                      itemBuilder: (context, index) => TimelineItemWidget(
+                        event: filteredEvents[index] as TimelineEvent,
+                        isLast: index == filteredEvents.length - 1,
+                        currentWorkerId: currentWorkerId,
+                      ),
                     ),
                   );
-                }
-
-                // Show Gallery if toggle is ON
-                if (_isAttachmentOnlyMode) {
-                  return RefreshIndicator(
-                    onRefresh: controller.refreshTimeline,
-                    child: _buildGalleryView(filteredEvents),
-                  );
-                }
-
-                // Otherwise, show standard List
-                return RefreshIndicator(
-                  onRefresh: controller.refreshTimeline,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredEvents.length,
-                    itemBuilder: (context, index) => TimelineItemWidget(
-                      event: filteredEvents[index] as TimelineEvent,
-                      isLast: index == filteredEvents.length - 1,
-                      currentWorkerId: currentWorkerId,
-                    ),
-                  ),
-                );
-              },
+                },
+              ),
             ),
           ),
-        ),
 
-        // 3. Input Area (Hide when viewing gallery for clarity)
-        if (canEdit && !_isAttachmentOnlyMode) _buildInputArea(controller),
-      ],
+          // 3. Input Area
+          if (widget.canEdit && !_isAttachmentOnlyMode)
+            _buildInputArea(controller),
+        ],
+      ),
     );
   }
+
+  // --- All the helper methods remain exactly the same, moved inside this state class ---
 
   Widget _buildAdvancedFilterBar() {
     return Container(
@@ -187,7 +286,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       ),
       child: Row(
         children: [
-          // Multi-Select Filter Button
           Expanded(
             child: InkWell(
               onTap: _showMultiSelectFilterDialog,
@@ -221,7 +319,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // Toggle Gallery
           const Text(
             "Attachments Only",
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
@@ -236,12 +333,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  // Multi-Select Dialog Method
   void _showMultiSelectFilterDialog() {
     showDialog(
       context: context,
       builder: (context) {
-        // StatefulBuilder is required to update checkboxes inside a dialog
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -288,8 +383,8 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Close dialog
-                    setState(() {}); // Update the main screen to apply filters
+                    Navigator.pop(context);
+                    setState(() {});
                   },
                   child: const Text("Apply"),
                 ),
@@ -301,11 +396,15 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  Widget _buildGalleryView(List<dynamic> events) {
+  Widget _buildGalleryView(
+    List<dynamic> events,
+    ScrollController? scrollController,
+  ) {
     return GridView.builder(
+      controller: scrollController,
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2, // 2 items per row for mobile
+        crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
         childAspectRatio: 0.8,
@@ -408,7 +507,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
         top: false,
         child: Column(
           children: [
-            // Select Type Row
             Row(
               children: [
                 const Text(
@@ -446,7 +544,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            // Text Input Row
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -507,18 +604,10 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   List<dynamic> _applyFilters(List<dynamic> events) {
     return events.where((e) {
       if (e is! TimelineEvent) return false;
-
-      // 1. Attachments Only Filter
-      if (_isAttachmentOnlyMode && !e.isAttachment) {
-        return false;
-      }
-
-      // 2. Discussion Type Filter (Multi-select)
+      if (_isAttachmentOnlyMode && !e.isAttachment) return false;
       if (_selectedFilterTypes.isNotEmpty &&
-          !_selectedFilterTypes.contains(e.discussionType)) {
+          !_selectedFilterTypes.contains(e.discussionType))
         return false;
-      }
-
       return true;
     }).toList();
   }
@@ -542,6 +631,9 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   }
 }
 
+// =========================================================================
+// REMAINS UNCHANGED: Attachment Sheet
+// =========================================================================
 class _AttachmentUploadSheet extends StatefulWidget {
   final Function(String, StepDiscussionType, String) onUpload;
   const _AttachmentUploadSheet({required this.onUpload});
@@ -560,8 +652,8 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
     if (type == 0 || type == 1) {
       final img = await ImagePicker().pickImage(
         source: type == 0 ? ImageSource.camera : ImageSource.gallery,
-        imageQuality: 70, // Compresses to 70% quality (drastically reduces MBs)
-        maxWidth: 1920, // Resizes large 4K photos to HD
+        imageQuality: 70,
+        maxWidth: 1920,
       );
       path = img?.path;
     } else {
@@ -592,7 +684,6 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-
           if (_selectedPath == null)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -631,7 +722,6 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                 onPressed: () => setState(() => _selectedPath = null),
               ),
             ),
-
           const SizedBox(height: 16),
           DropdownButtonFormField<StepDiscussionType>(
             value: _selectedType,
