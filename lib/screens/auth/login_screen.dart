@@ -152,13 +152,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       onPressed: isLoading
                                           ? null
                                           : () {
+                                              final cleanedUsername =
+                                                  usernameController.text
+                                                      .trim();
                                               ref
                                                   .read(
                                                     authNotifierProvider
                                                         .notifier,
                                                   )
                                                   .login(
-                                                    usernameController.text,
+                                                    cleanedUsername,
                                                     passwordController.text,
                                                   );
                                             },
