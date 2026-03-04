@@ -70,25 +70,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     final canEdit = true; // Based on your auth logic
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Step: ${currentStep.name}"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, currentStep),
-        ),
-        actions: [
-          // NEW: Manual refresh button in AppBar
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: "Refresh Step Info",
-            onPressed: () => controller.refreshStepData(),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
-          ),
-        ],
-      ),
       // Stacked Floating Action Buttons
       floatingActionButton: _buildFloatingActionButtons(
         context,
@@ -97,24 +78,69 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
         screenState.isLoading,
         controller,
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 800) {
-            return _buildSplitLayout(
-              currentStep,
-              canEdit,
-              screenState.isLoading,
-              controller,
-            );
-          } else {
-            return _buildMobileLayout(
-              currentStep,
-              canEdit,
-              screenState.isLoading,
-              controller,
-            );
-          }
+
+      // NEW: Wrapped body in NestedScrollView for the dynamic AppBar effect
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              title: Text(
+                "Step: ${currentStep.name}",
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context, currentStep),
+              ),
+              floating: true, // Appears as soon as you scroll up
+              snap: true, // Snaps fully into view
+              pinned:
+                  false, // Scrolls completely out of view when scrolling down
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              foregroundColor: Colors.black,
+              elevation: 2,
+              shadowColor: Colors.black.withOpacity(0.3),
+              actions: [
+                // Manual refresh button in AppBar
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: "Refresh Step Info",
+                  onPressed: () => controller.refreshStepData(),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(right: 16.0),
+                  child: AppBranding(
+                    color: Colors.black,
+                    size: 24,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ];
         },
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth > 800) {
+              return _buildSplitLayout(
+                currentStep,
+                canEdit,
+                screenState.isLoading,
+                controller,
+              );
+            } else {
+              return _buildMobileLayout(
+                currentStep,
+                canEdit,
+                screenState.isLoading,
+                controller,
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -210,7 +236,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     bool isLoading,
     StepDetailController controller,
   ) {
-    // NEW: Wrapped in RefreshIndicator
+    // Wrapped in RefreshIndicator
     return RefreshIndicator(
       onRefresh: controller.refreshStepData,
       child: SingleChildScrollView(
@@ -236,7 +262,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       children: [
         SizedBox(
           width: 400,
-          // NEW: Wrapped in RefreshIndicator
+          // Wrapped in RefreshIndicator
           child: RefreshIndicator(
             onRefresh: controller.refreshStepData,
             child: SingleChildScrollView(
@@ -401,8 +427,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
               onRefresh: controller.refreshTimeline,
               child: ListView.builder(
                 controller: widget.scrollController,
-                physics:
-                    const AlwaysScrollableScrollPhysics(), // Ensures refresh works even with few items
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: filteredEvents.length,
                 itemBuilder: (context, index) => TimelineItemWidget(
@@ -499,7 +524,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
             activeColor: Theme.of(context).primaryColor,
             onChanged: (val) => setState(() => _isAttachmentOnlyMode = val),
           ),
-          // NEW: Explicit Refresh button for the Timeline section
           IconButton(
             icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
             tooltip: "Refresh Activity",
@@ -579,8 +603,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
   ) {
     return GridView.builder(
       controller: scrollController,
-      physics:
-          const AlwaysScrollableScrollPhysics(), // Ensures refresh works here too
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
