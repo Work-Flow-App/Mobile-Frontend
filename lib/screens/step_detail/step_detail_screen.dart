@@ -21,6 +21,45 @@ class StepDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
+  // Helper method to show a confirmation dialog
+  void _showConfirmationDialog({
+    required BuildContext context,
+    required String title,
+    required String content,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text("Confirm"),
+            ),
+          ],
+        );
+      },
+    ).then((confirmed) {
+      if (confirmed == true) {
+        onConfirm();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenState = ref.watch(stepDetailControllerProvider(widget.step));
@@ -92,18 +131,24 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             )
           else if (step.status == StepStatus.NOT_STARTED)
             FloatingActionButton.extended(
-              heroTag:
-                  "start_step_btn", // Unique tag to prevent hero animation errors
-              onPressed: () async {
-                try {
-                  await controller.startStep();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text("Error: $e")));
-                  }
-                }
+              heroTag: "start_step_btn",
+              onPressed: () {
+                _showConfirmationDialog(
+                  context: context,
+                  title: "Start Step",
+                  content: "Are you sure you want to start this step?",
+                  onConfirm: () async {
+                    try {
+                      await controller.startStep();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
+                );
               },
               icon: const Icon(Icons.play_arrow),
               label: const Text("Start Step"),
@@ -112,27 +157,35 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             )
           else if (step.status == StepStatus.STARTED)
             FloatingActionButton.extended(
-              heroTag: "complete_step_btn", // Unique tag
-              onPressed: () async {
-                try {
-                  await controller.completeStep();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text("Error: $e")));
-                  }
-                }
+              heroTag: "complete_step_btn",
+              onPressed: () {
+                _showConfirmationDialog(
+                  context: context,
+                  title: "Complete Step",
+                  content:
+                      "Are you sure you want to mark this step as completed?",
+                  onConfirm: () async {
+                    try {
+                      await controller.completeStep();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
+                );
               },
               icon: const Icon(Icons.check),
               label: const Text("Mark as Completed"),
               backgroundColor: Colors.green.shade700,
               foregroundColor: Colors.white,
             ),
-          const SizedBox(height: 16), // Spacing between the buttons
+          const SizedBox(height: 16),
         ],
         FloatingActionButton.extended(
-          heroTag: "comments_btn", // Unique tag
+          heroTag: "comments_btn",
           onPressed: () {
             _showCommentsBottomSheet(context, step, canEdit);
           },
@@ -145,7 +198,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
 
   Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
     return SingleChildScrollView(
-      // Increased padding to account for the double-stacked FABs
       padding: const EdgeInsets.only(bottom: 160),
       child: StepInfoSection(
         step: step,
@@ -188,8 +240,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useSafeArea:
-          true, // FIX: Prevents modal from overlapping with top notches on big screens
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Padding(
@@ -281,7 +332,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     );
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
-    // Extracted list building logic so we can reuse it cleanly in the LayoutBuilder
     Widget buildListContent() {
       return Container(
         color: Colors.grey[50],
@@ -333,7 +383,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
       );
     }
 
-    // FIX: LayoutBuilder prevents crash on screen rotation by falling back to scrolling
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isTightSpace = constraints.maxHeight < 250;
@@ -345,10 +394,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildAdvancedFilterBar(),
-                SizedBox(
-                  height: 300, // Fixed height fallback so it doesn't disappear
-                  child: buildListContent(),
-                ),
+                SizedBox(height: 300, child: buildListContent()),
                 if (widget.canEdit && !_isAttachmentOnlyMode)
                   _buildInputArea(controller),
               ],
@@ -356,7 +402,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
           );
         }
 
-        // Standard layout with Expanded (for portrait / regular screens)
         return Column(
           children: [
             _buildAdvancedFilterBar(),
@@ -646,7 +691,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
                 ),
                 Expanded(
                   child: Container(
-                    // FIX: Prevent multiline input from growing infinitely and breaking the column
                     constraints: const BoxConstraints(maxHeight: 120),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
@@ -770,7 +814,6 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
         right: 16,
         top: 16,
       ),
-      // FIX: Added SingleChildScrollView so the attachment options and keyboard can scroll
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
