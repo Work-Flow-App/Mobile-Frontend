@@ -24,6 +24,9 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final screenState = ref.watch(stepDetailControllerProvider(widget.step));
+    final controller = ref.read(
+      stepDetailControllerProvider(widget.step).notifier,
+    );
     final currentStep = screenState.step;
     final canEdit = true; // Based on your auth logic
 
@@ -41,12 +44,13 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showCommentsBottomSheet(context, currentStep, canEdit);
-        },
-        icon: const Icon(Icons.comment),
-        label: const Text("Activity, Comments & Attachments"),
+      // Stacked Floating Action Buttons
+      floatingActionButton: _buildFloatingActionButtons(
+        context,
+        currentStep,
+        canEdit,
+        screenState.isLoading,
+        controller,
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -68,9 +72,81 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
+  Widget _buildFloatingActionButtons(
+    BuildContext context,
+    JobStep step,
+    bool canEdit,
+    bool isLoading,
+    StepDetailController controller,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (canEdit) ...[
+          if (isLoading)
+            const FloatingActionButton.extended(
+              heroTag: "loading_btn",
+              onPressed: null,
+              label: CircularProgressIndicator(),
+            )
+          else if (step.status == StepStatus.NOT_STARTED)
+            FloatingActionButton.extended(
+              heroTag:
+                  "start_step_btn", // Unique tag to prevent hero animation errors
+              onPressed: () async {
+                try {
+                  await controller.startStep();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                  }
+                }
+              },
+              icon: const Icon(Icons.play_arrow),
+              label: const Text("Start Step"),
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+            )
+          else if (step.status == StepStatus.STARTED)
+            FloatingActionButton.extended(
+              heroTag: "complete_step_btn", // Unique tag
+              onPressed: () async {
+                try {
+                  await controller.completeStep();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                  }
+                }
+              },
+              icon: const Icon(Icons.check),
+              label: const Text("Mark as Completed"),
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+            ),
+          const SizedBox(height: 16), // Spacing between the buttons
+        ],
+        FloatingActionButton.extended(
+          heroTag: "comments_btn", // Unique tag
+          onPressed: () {
+            _showCommentsBottomSheet(context, step, canEdit);
+          },
+          icon: const Icon(Icons.comment),
+          label: const Text("Activity, Comments & Attachments"),
+        ),
+      ],
+    );
+  }
+
   Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 100), // Space for the FAB
+      // Increased padding to account for the double-stacked FABs
+      padding: const EdgeInsets.only(bottom: 160),
       child: StepInfoSection(
         step: step,
         canEdit: canEdit,

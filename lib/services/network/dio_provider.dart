@@ -7,7 +7,7 @@ import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'https://api.dev.workfloow.app/api/v1',
+      baseUrl: 'https://api.dev2.workfloow.app/api/v1',
       /* baseUrl: 'http://10.0.2.2:8080/api/v1', */
       /*  baseUrl: 'http://10.86.247.227:8080/api/v1', */
       connectTimeout: const Duration(seconds: 10),
