@@ -79,7 +79,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
         controller,
       ),
 
-      // NEW: Wrapped body in NestedScrollView for the dynamic AppBar effect
+      // Wrapped body in NestedScrollView for the dynamic AppBar effect
       body: NestedScrollView(
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return <Widget>[
@@ -103,14 +103,8 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               foregroundColor: Colors.black,
               elevation: 2,
               shadowColor: Colors.black.withOpacity(0.3),
-              actions: [
-                // Manual refresh button in AppBar
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: "Refresh Step Info",
-                  onPressed: () => controller.refreshStepData(),
-                ),
-                const Padding(
+              actions: const [
+                Padding(
                   padding: EdgeInsets.only(right: 16.0),
                   child: AppBranding(
                     color: Colors.black,
