@@ -745,8 +745,9 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
       if (e is! TimelineEvent) return false;
       if (_isAttachmentOnlyMode && !e.isAttachment) return false;
       if (_selectedFilterTypes.isNotEmpty &&
-          !_selectedFilterTypes.contains(e.discussionType))
+          !_selectedFilterTypes.contains(e.discussionType)) {
         return false;
+      }
       return true;
     }).toList();
   }
@@ -774,7 +775,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
 // WIDGET: Attachment Sheet
 // =========================================================================
 class _AttachmentUploadSheet extends StatefulWidget {
-  final Function(String, StepDiscussionType, String) onUpload;
+  final Future<void> Function(String, StepDiscussionType, String) onUpload;
+
   const _AttachmentUploadSheet({required this.onUpload});
 
   @override
@@ -785,6 +787,7 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
   final _descController = TextEditingController();
   StepDiscussionType _selectedType = StepDiscussionType.GENERAL;
   String? _selectedPath;
+  bool _isUploading = false;
 
   Future<void> _pickFile(int type) async {
     String? path;
@@ -859,7 +862,9 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => setState(() => _selectedPath = null),
+                  onPressed: _isUploading
+                      ? null
+                      : () => setState(() => _selectedPath = null),
                 ),
               ),
             const SizedBox(height: 16),
@@ -884,11 +889,14 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                     ),
                   )
                   .toList(),
-              onChanged: (val) => setState(() => _selectedType = val!),
+              onChanged: _isUploading
+                  ? null
+                  : (val) => setState(() => _selectedType = val!),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descController,
+              enabled: !_isUploading,
               decoration: const InputDecoration(
                 labelText: "Description (Optional)",
                 border: OutlineInputBorder(),
@@ -902,16 +910,42 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: _selectedPath == null
+                onPressed: (_selectedPath == null || _isUploading)
                     ? null
-                    : () {
-                        widget.onUpload(
-                          _selectedPath!,
-                          _selectedType,
-                          _descController.text,
-                        );
+                    : () async {
+                        setState(() {
+                          _isUploading = true;
+                        });
+                        try {
+                          await widget.onUpload(
+                            _selectedPath!,
+                            _selectedType,
+                            _descController.text,
+                          );
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Upload failed: $e")),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isUploading = false;
+                            });
+                          }
+                        }
                       },
-                child: const Text("Upload"),
+                child: _isUploading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text("Upload"),
               ),
             ),
             const SizedBox(height: 16),
@@ -928,7 +962,7 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
     VoidCallback onTap,
   ) {
     return InkWell(
-      onTap: onTap,
+      onTap: _isUploading ? null : onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
