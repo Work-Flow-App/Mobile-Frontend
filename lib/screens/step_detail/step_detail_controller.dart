@@ -29,6 +29,18 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     return ref.refresh(stepTimelineProvider(state.step.id).future);
   }
 
+  // NEW: Added a dedicated method to refresh all step data
+  Future<void> refreshStepData() async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await refreshTimeline();
+      // Refresh parent provider to fetch updated step statuses
+      ref.refresh(assignedStepsFutureProvider);
+    } finally {
+      state = state.copyWith(isLoading: false);
+    }
+  }
+
   Future<void> startStep() async {
     state = state.copyWith(isLoading: true);
     try {
@@ -88,7 +100,6 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     }
   }
 
-  // Updated signature
   Future<void> uploadFile(
     String path,
     StepDiscussionType type,

@@ -76,8 +76,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context, currentStep),
         ),
-        actions: const [
-          Padding(
+        actions: [
+          // NEW: Manual refresh button in AppBar
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: "Refresh Step Info",
+            onPressed: () => controller.refreshStepData(),
+          ),
+          const Padding(
             padding: EdgeInsets.only(right: 16.0),
             child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
           ),
@@ -98,12 +104,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               currentStep,
               canEdit,
               screenState.isLoading,
+              controller,
             );
           } else {
             return _buildMobileLayout(
               currentStep,
               canEdit,
               screenState.isLoading,
+              controller,
             );
           }
         },
@@ -196,28 +204,48 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     );
   }
 
-  Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 160),
-      child: StepInfoSection(
-        step: step,
-        canEdit: canEdit,
-        isLoading: isLoading,
+  Widget _buildMobileLayout(
+    JobStep step,
+    bool canEdit,
+    bool isLoading,
+    StepDetailController controller,
+  ) {
+    // NEW: Wrapped in RefreshIndicator
+    return RefreshIndicator(
+      onRefresh: controller.refreshStepData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 160),
+        child: StepInfoSection(
+          step: step,
+          canEdit: canEdit,
+          isLoading: isLoading,
+        ),
       ),
     );
   }
 
-  Widget _buildSplitLayout(JobStep step, bool canEdit, bool isLoading) {
+  Widget _buildSplitLayout(
+    JobStep step,
+    bool canEdit,
+    bool isLoading,
+    StepDetailController controller,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 400,
-          child: SingleChildScrollView(
-            child: StepInfoSection(
-              step: step,
-              canEdit: canEdit,
-              isLoading: isLoading,
+          // NEW: Wrapped in RefreshIndicator
+          child: RefreshIndicator(
+            onRefresh: controller.refreshStepData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: StepInfoSection(
+                step: step,
+                canEdit: canEdit,
+                isLoading: isLoading,
+              ),
             ),
           ),
         ),
@@ -349,7 +377,11 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: const [
                     SizedBox(height: 100),
-                    Center(child: Text("No items match your filter.")),
+                    Center(
+                      child: Text(
+                        "No items match your filter. Pull to refresh.",
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -369,6 +401,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
               onRefresh: controller.refreshTimeline,
               child: ListView.builder(
                 controller: widget.scrollController,
+                physics:
+                    const AlwaysScrollableScrollPhysics(), // Ensures refresh works even with few items
                 padding: const EdgeInsets.all(16),
                 itemCount: filteredEvents.length,
                 itemBuilder: (context, index) => TimelineItemWidget(
@@ -393,7 +427,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildAdvancedFilterBar(),
+                _buildAdvancedFilterBar(controller),
                 SizedBox(height: 300, child: buildListContent()),
                 if (widget.canEdit && !_isAttachmentOnlyMode)
                   _buildInputArea(controller),
@@ -404,7 +438,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
 
         return Column(
           children: [
-            _buildAdvancedFilterBar(),
+            _buildAdvancedFilterBar(controller),
             Expanded(child: buildListContent()),
             if (widget.canEdit && !_isAttachmentOnlyMode)
               _buildInputArea(controller),
@@ -414,7 +448,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     );
   }
 
-  Widget _buildAdvancedFilterBar() {
+  Widget _buildAdvancedFilterBar(StepDetailController controller) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -457,13 +491,19 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
           ),
           const SizedBox(width: 16),
           const Text(
-            "Attachments Only",
+            "Attachments",
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
           Switch(
             value: _isAttachmentOnlyMode,
             activeColor: Theme.of(context).primaryColor,
             onChanged: (val) => setState(() => _isAttachmentOnlyMode = val),
+          ),
+          // NEW: Explicit Refresh button for the Timeline section
+          IconButton(
+            icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
+            tooltip: "Refresh Activity",
+            onPressed: () => controller.refreshTimeline(),
           ),
         ],
       ),
@@ -539,6 +579,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
   ) {
     return GridView.builder(
       controller: scrollController,
+      physics:
+          const AlwaysScrollableScrollPhysics(), // Ensures refresh works here too
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
