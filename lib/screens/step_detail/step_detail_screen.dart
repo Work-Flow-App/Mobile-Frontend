@@ -21,75 +21,251 @@ class StepDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
+  // Helper method to show a confirmation dialog
+  void _showConfirmationDialog({
+    required BuildContext context,
+    required String title,
+    required String content,
+    required VoidCallback onConfirm,
+  }) {
+    showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(content),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text("Confirm"),
+            ),
+          ],
+        );
+      },
+    ).then((confirmed) {
+      if (confirmed == true) {
+        onConfirm();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenState = ref.watch(stepDetailControllerProvider(widget.step));
+    final controller = ref.read(
+      stepDetailControllerProvider(widget.step).notifier,
+    );
     final currentStep = screenState.step;
     final canEdit = true; // Based on your auth logic
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Step: ${currentStep.name}"),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, currentStep),
+      // Stacked Floating Action Buttons
+      floatingActionButton: _buildFloatingActionButtons(
+        context,
+        currentStep,
+        canEdit,
+        screenState.isLoading,
+        controller,
+      ),
+
+      // Wrapped body in NestedScrollView for the dynamic AppBar effect
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              title: Text(
+                "Step: ${currentStep.name}",
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.pop(context, currentStep),
+              ),
+              floating: true, // Appears as soon as you scroll up
+              snap: true, // Snaps fully into view
+              pinned:
+                  false, // Scrolls completely out of view when scrolling down
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              foregroundColor: Colors.black,
+              elevation: 2,
+              shadowColor: Colors.black.withOpacity(0.3),
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.only(right: 16.0),
+                  child: AppBranding(
+                    color: Colors.black,
+                    size: 24,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ];
+        },
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth > 800) {
+              return _buildSplitLayout(
+                currentStep,
+                canEdit,
+                screenState.isLoading,
+                controller,
+              );
+            } else {
+              return _buildMobileLayout(
+                currentStep,
+                canEdit,
+                screenState.isLoading,
+                controller,
+              );
+            }
+          },
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16.0),
-            child: AppBranding(color: Colors.white, size: 24, fontSize: 18),
-          ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButtons(
+    BuildContext context,
+    JobStep step,
+    bool canEdit,
+    bool isLoading,
+    StepDetailController controller,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (canEdit) ...[
+          if (isLoading)
+            const FloatingActionButton.extended(
+              heroTag: "loading_btn",
+              onPressed: null,
+              label: CircularProgressIndicator(),
+            )
+          else if (step.status == StepStatus.NOT_STARTED)
+            FloatingActionButton.extended(
+              heroTag: "start_step_btn",
+              onPressed: () {
+                _showConfirmationDialog(
+                  context: context,
+                  title: "Start Step",
+                  content: "Are you sure you want to start this step?",
+                  onConfirm: () async {
+                    try {
+                      await controller.startStep();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
+                );
+              },
+              icon: const Icon(Icons.play_arrow),
+              label: const Text("Start Step"),
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+            )
+          else if (step.status == StepStatus.STARTED)
+            FloatingActionButton.extended(
+              heroTag: "complete_step_btn",
+              onPressed: () {
+                _showConfirmationDialog(
+                  context: context,
+                  title: "Complete Step",
+                  content:
+                      "Are you sure you want to mark this step as completed?",
+                  onConfirm: () async {
+                    try {
+                      await controller.completeStep();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
+                );
+              },
+              icon: const Icon(Icons.check),
+              label: const Text("Mark as Completed"),
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+            ),
+          const SizedBox(height: 16),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          _showCommentsBottomSheet(context, currentStep, canEdit);
-        },
-        icon: const Icon(Icons.comment),
-        label: const Text("Activity, Comments & Attachments"),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth > 800) {
-            return _buildSplitLayout(
-              currentStep,
-              canEdit,
-              screenState.isLoading,
-            );
-          } else {
-            return _buildMobileLayout(
-              currentStep,
-              canEdit,
-              screenState.isLoading,
-            );
-          }
-        },
+        FloatingActionButton.extended(
+          heroTag: "comments_btn",
+          onPressed: () {
+            _showCommentsBottomSheet(context, step, canEdit);
+          },
+          icon: const Icon(Icons.comment),
+          label: const Text("Activity, Comments & Attachments"),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileLayout(
+    JobStep step,
+    bool canEdit,
+    bool isLoading,
+    StepDetailController controller,
+  ) {
+    // Wrapped in RefreshIndicator
+    return RefreshIndicator(
+      onRefresh: controller.refreshStepData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 160),
+        child: StepInfoSection(
+          step: step,
+          canEdit: canEdit,
+          isLoading: isLoading,
+        ),
       ),
     );
   }
 
-  Widget _buildMobileLayout(JobStep step, bool canEdit, bool isLoading) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 100), // Space for the FAB
-      child: StepInfoSection(
-        step: step,
-        canEdit: canEdit,
-        isLoading: isLoading,
-      ),
-    );
-  }
-
-  Widget _buildSplitLayout(JobStep step, bool canEdit, bool isLoading) {
+  Widget _buildSplitLayout(
+    JobStep step,
+    bool canEdit,
+    bool isLoading,
+    StepDetailController controller,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
           width: 400,
-          child: SingleChildScrollView(
-            child: StepInfoSection(
-              step: step,
-              canEdit: canEdit,
-              isLoading: isLoading,
+          // Wrapped in RefreshIndicator
+          child: RefreshIndicator(
+            onRefresh: controller.refreshStepData,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: StepInfoSection(
+                step: step,
+                canEdit: canEdit,
+                isLoading: isLoading,
+              ),
             ),
           ),
         ),
@@ -112,8 +288,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useSafeArea:
-          true, // FIX: Prevents modal from overlapping with top notches on big screens
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Padding(
@@ -205,7 +380,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     );
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
-    // Extracted list building logic so we can reuse it cleanly in the LayoutBuilder
     Widget buildListContent() {
       return Container(
         color: Colors.grey[50],
@@ -223,7 +397,11 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: const [
                     SizedBox(height: 100),
-                    Center(child: Text("No items match your filter.")),
+                    Center(
+                      child: Text(
+                        "No items match your filter. Pull to refresh.",
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -243,6 +421,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
               onRefresh: controller.refreshTimeline,
               child: ListView.builder(
                 controller: widget.scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: filteredEvents.length,
                 itemBuilder: (context, index) => TimelineItemWidget(
@@ -257,7 +436,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
       );
     }
 
-    // FIX: LayoutBuilder prevents crash on screen rotation by falling back to scrolling
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isTightSpace = constraints.maxHeight < 250;
@@ -268,11 +446,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildAdvancedFilterBar(),
-                SizedBox(
-                  height: 300, // Fixed height fallback so it doesn't disappear
-                  child: buildListContent(),
-                ),
+                _buildAdvancedFilterBar(controller),
+                SizedBox(height: 300, child: buildListContent()),
                 if (widget.canEdit && !_isAttachmentOnlyMode)
                   _buildInputArea(controller),
               ],
@@ -280,10 +455,9 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
           );
         }
 
-        // Standard layout with Expanded (for portrait / regular screens)
         return Column(
           children: [
-            _buildAdvancedFilterBar(),
+            _buildAdvancedFilterBar(controller),
             Expanded(child: buildListContent()),
             if (widget.canEdit && !_isAttachmentOnlyMode)
               _buildInputArea(controller),
@@ -293,7 +467,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     );
   }
 
-  Widget _buildAdvancedFilterBar() {
+  Widget _buildAdvancedFilterBar(StepDetailController controller) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -336,13 +510,18 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
           ),
           const SizedBox(width: 16),
           const Text(
-            "Attachments Only",
+            "Attachments",
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
           Switch(
             value: _isAttachmentOnlyMode,
             activeColor: Theme.of(context).primaryColor,
             onChanged: (val) => setState(() => _isAttachmentOnlyMode = val),
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
+            tooltip: "Refresh Activity",
+            onPressed: () => controller.refreshTimeline(),
           ),
         ],
       ),
@@ -418,6 +597,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
   ) {
     return GridView.builder(
       controller: scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -570,7 +750,6 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
                 ),
                 Expanded(
                   child: Container(
-                    // FIX: Prevent multiline input from growing infinitely and breaking the column
                     constraints: const BoxConstraints(maxHeight: 120),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
@@ -625,8 +804,9 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
       if (e is! TimelineEvent) return false;
       if (_isAttachmentOnlyMode && !e.isAttachment) return false;
       if (_selectedFilterTypes.isNotEmpty &&
-          !_selectedFilterTypes.contains(e.discussionType))
+          !_selectedFilterTypes.contains(e.discussionType)) {
         return false;
+      }
       return true;
     }).toList();
   }
@@ -654,7 +834,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
 // WIDGET: Attachment Sheet
 // =========================================================================
 class _AttachmentUploadSheet extends StatefulWidget {
-  final Function(String, StepDiscussionType, String) onUpload;
+  final Future<void> Function(String, StepDiscussionType, String) onUpload;
+
   const _AttachmentUploadSheet({required this.onUpload});
 
   @override
@@ -665,6 +846,7 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
   final _descController = TextEditingController();
   StepDiscussionType _selectedType = StepDiscussionType.GENERAL;
   String? _selectedPath;
+  bool _isUploading = false;
 
   Future<void> _pickFile(int type) async {
     String? path;
@@ -694,7 +876,6 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
         right: 16,
         top: 16,
       ),
-      // FIX: Added SingleChildScrollView so the attachment options and keyboard can scroll
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -740,7 +921,9 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                 ),
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
-                  onPressed: () => setState(() => _selectedPath = null),
+                  onPressed: _isUploading
+                      ? null
+                      : () => setState(() => _selectedPath = null),
                 ),
               ),
             const SizedBox(height: 16),
@@ -765,11 +948,14 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                     ),
                   )
                   .toList(),
-              onChanged: (val) => setState(() => _selectedType = val!),
+              onChanged: _isUploading
+                  ? null
+                  : (val) => setState(() => _selectedType = val!),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _descController,
+              enabled: !_isUploading,
               decoration: const InputDecoration(
                 labelText: "Description (Optional)",
                 border: OutlineInputBorder(),
@@ -783,16 +969,42 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: _selectedPath == null
+                onPressed: (_selectedPath == null || _isUploading)
                     ? null
-                    : () {
-                        widget.onUpload(
-                          _selectedPath!,
-                          _selectedType,
-                          _descController.text,
-                        );
+                    : () async {
+                        setState(() {
+                          _isUploading = true;
+                        });
+                        try {
+                          await widget.onUpload(
+                            _selectedPath!,
+                            _selectedType,
+                            _descController.text,
+                          );
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("Upload failed: $e")),
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isUploading = false;
+                            });
+                          }
+                        }
                       },
-                child: const Text("Upload"),
+                child: _isUploading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text("Upload"),
               ),
             ),
             const SizedBox(height: 16),
@@ -809,7 +1021,7 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
     VoidCallback onTap,
   ) {
     return InkWell(
-      onTap: onTap,
+      onTap: _isUploading ? null : onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

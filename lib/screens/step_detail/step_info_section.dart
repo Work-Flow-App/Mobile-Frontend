@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/models/job/timeline_model.dart'; // For Status Extension
-import 'package:mobile_frontend/screens/step_detail/step_detail_controller.dart';
 
 class StepInfoSection extends ConsumerWidget {
   final JobStep step;
@@ -18,8 +17,6 @@ class StepInfoSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(stepDetailControllerProvider(step).notifier);
-
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -58,53 +55,9 @@ class StepInfoSection extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
 
-          // Actions
-          if (canEdit) ...[
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (step.status == StepStatus.NOT_STARTED)
-              _buildActionButton(
-                context: context,
-                label: "Start Step",
-                icon: Icons.play_arrow,
-                color: Colors.blue.shade700,
-                onPressed: () => _handleAction(context, controller.startStep),
-              )
-            else if (step.status == StepStatus.STARTED)
-              _buildActionButton(
-                context: context,
-                label: "Mark as Completed",
-                icon: Icons.check,
-                color: Colors.green.shade700,
-                onPressed: () =>
-                    _handleAction(context, controller.completeStep),
-              ),
-          ] else ...[
-            _buildReadOnlyBadge(),
-          ],
+          // Display read-only badge if the user does not have edit rights
+          if (!canEdit) _buildReadOnlyBadge(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required BuildContext context,
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
       ),
     );
   }
@@ -128,20 +81,5 @@ class StepInfoSection extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _handleAction(
-    BuildContext context,
-    Future<void> Function() action,
-  ) async {
-    try {
-      await action();
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
-    }
   }
 }
