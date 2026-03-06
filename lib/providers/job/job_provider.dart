@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/services/job/job_service.dart';
 import 'package:mobile_frontend/services/network/dio_provider.dart';
+import 'package:mobile_frontend/models/job/work_log_model.dart';
 
 // Inject Dio into JobService
 final jobServiceProvider = Provider((ref) {
@@ -19,6 +20,13 @@ final stepTimelineProvider = FutureProvider.family<List<dynamic>, int>((
   stepId,
 ) async {
   return ref.watch(jobServiceProvider).getStepTimeline(stepId);
+});
+
+final stepWorkLogsProvider = FutureProvider.family<List<WorkLog>, int>((
+  ref,
+  stepId,
+) async {
+  return ref.watch(jobServiceProvider).getWorkLogs(stepId);
 });
 
 final stepStatusFilterProvider = StateProvider<StepStatus?>((ref) => null);

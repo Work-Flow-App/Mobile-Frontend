@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/models/job/timeline_model.dart';
+import 'package:mobile_frontend/models/job/work_log_model.dart';
 
 class JobService {
   final Dio _dio;
