@@ -37,6 +37,16 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     super.dispose();
   }
 
+  // Helper method to format minutes into "Xh Ym" beautifully
+  String _formatDuration(int totalMinutes) {
+    final int hours = totalMinutes ~/ 60;
+    final int minutes = totalMinutes % 60;
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
   // Check if Time Out is strictly after Time In
   bool get _isTimeValid {
     if (_timeIn == null || _timeOut == null) return true;
@@ -71,7 +81,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
         visitDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
         timeIn: _formatTimeForApi(_timeIn!),
         timeOut: _formatTimeForApi(_timeOut!),
-        description: _descriptionController.text.trim(), // Optional field
+        description: _descriptionController.text.trim(),
       );
 
       // Reset form
@@ -94,10 +104,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error: $e"),
-            backgroundColor: Colors.red, // Error snackbar is now red
-          ),
+          SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
       }
     }
@@ -110,8 +117,6 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
       stepDetailControllerProvider(widget.step).notifier,
     );
 
-    // Using CustomScrollView ensures the form and the list scroll together,
-    // preventing any layout overflows when the keyboard pops up or on small screens.
     return RefreshIndicator(
       onRefresh: controller.refreshWorkLogs,
       child: Container(
@@ -232,7 +237,6 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               ),
             ],
           ),
-          // Validation Error Message
           if (!_isTimeValid)
             Padding(
               padding: const EdgeInsets.only(top: 8.0, left: 4.0),
@@ -268,9 +272,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: _canSave
-                    ? _submitLog
-                    : null, // Disabled if not valid
+                onPressed: _canSave ? _submitLog : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
@@ -327,14 +329,51 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     );
   }
 
-  Widget _buildLogsList(AsyncValue<List<WorkLog>> logsAsync) {
+  Widget _buildSummaryCard(int totalMinutes) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(Icons.timer, color: Colors.blue.shade700),
+          const SizedBox(width: 12),
+          Text(
+            "Total Time Logged",
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: Colors.blue.shade900,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            _formatDuration(totalMinutes),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.blue.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogsList(AsyncValue<WorkLogResponse> logsAsync) {
     return logsAsync.when(
       loading: () => const SliverFillRemaining(
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (err, _) =>
           SliverFillRemaining(child: Center(child: Text("Error: $err"))),
-      data: (logs) {
+      data: (data) {
+        final logs = data.visitLogs;
+
         if (logs.isEmpty && !_isAddingLog) {
           return SliverFillRemaining(
             hasScrollBody: false,
@@ -361,10 +400,17 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
         return SliverPadding(
           padding: const EdgeInsets.all(16),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildLogCard(logs[index]),
-              childCount: logs.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              // Show the total summary card as the first item
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: _buildSummaryCard(data.totalWorkedMinutes),
+                );
+              }
+              // Render standard log cards for the rest
+              return _buildLogCard(logs[index - 1]);
+            }, childCount: logs.length + 1),
           ),
         );
       },
@@ -382,6 +428,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
                   Icons.calendar_month,
@@ -397,28 +444,43 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    "${log.timeIn.substring(0, 5)} - ${log.timeOut.substring(0, 5)}",
-                    style: TextStyle(
-                      color: Colors.orange.shade900,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        "${log.timeIn.substring(0, 5)} - ${log.timeOut.substring(0, 5)}",
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    // Beautiful display for duration
+                    Text(
+                      _formatDuration(log.workedMinutes),
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
             if (log.description.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 log.description,
                 style: TextStyle(color: Colors.grey.shade800, height: 1.4),

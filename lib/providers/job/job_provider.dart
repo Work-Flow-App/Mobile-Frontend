@@ -22,7 +22,7 @@ final stepTimelineProvider = FutureProvider.family<List<dynamic>, int>((
   return ref.watch(jobServiceProvider).getStepTimeline(stepId);
 });
 
-final stepWorkLogsProvider = FutureProvider.family<List<WorkLog>, int>((
+final stepWorkLogsProvider = FutureProvider.family<WorkLogResponse, int>((
   ref,
   stepId,
 ) async {
