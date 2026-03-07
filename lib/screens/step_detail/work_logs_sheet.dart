@@ -37,9 +37,20 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     super.dispose();
   }
 
+  // Check if Time Out is strictly after Time In
+  bool get _isTimeValid {
+    if (_timeIn == null || _timeOut == null) return true;
+    final inMinutes = _timeIn!.hour * 60 + _timeIn!.minute;
+    final outMinutes = _timeOut!.hour * 60 + _timeOut!.minute;
+    return outMinutes > inMinutes;
+  }
+
   // Validation getter for enabling the Save button
   bool get _canSave =>
-      _selectedDate != null && _timeIn != null && _timeOut != null;
+      _selectedDate != null &&
+      _timeIn != null &&
+      _timeOut != null &&
+      _isTimeValid;
 
   // Format TimeOfDay to API format "HH:mm:ss"
   String _formatTimeForApi(TimeOfDay time) {
@@ -221,6 +232,19 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               ),
             ],
           ),
+          // Validation Error Message
+          if (!_isTimeValid)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+              child: Text(
+                "Time Out must be after Time In.",
+                style: TextStyle(
+                  color: Colors.red.shade700,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
           const SizedBox(height: 12),
           TextField(
             controller: _descriptionController,
