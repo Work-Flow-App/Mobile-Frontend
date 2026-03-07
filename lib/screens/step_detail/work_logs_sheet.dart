@@ -37,6 +37,10 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     super.dispose();
   }
 
+  // Validation getter for enabling the Save button
+  bool get _canSave =>
+      _selectedDate != null && _timeIn != null && _timeOut != null;
+
   // Format TimeOfDay to API format "HH:mm:ss"
   String _formatTimeForApi(TimeOfDay time) {
     final h = time.hour.toString().padLeft(2, '0');
@@ -45,19 +49,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
   }
 
   Future<void> _submitLog() async {
-    if (_selectedDate == null ||
-        _timeIn == null ||
-        _timeOut == null ||
-        _descriptionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Please fill all fields (Date, Time In, Time Out, Description)",
-          ),
-        ),
-      );
-      return;
-    }
+    if (!_canSave) return;
 
     final controller = ref.read(
       stepDetailControllerProvider(widget.step).notifier,
@@ -68,7 +60,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
         visitDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
         timeIn: _formatTimeForApi(_timeIn!),
         timeOut: _formatTimeForApi(_timeOut!),
-        description: _descriptionController.text.trim(),
+        description: _descriptionController.text.trim(), // Optional field
       );
 
       // Reset form
@@ -90,9 +82,12 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error: $e"),
+            backgroundColor: Colors.red, // Error snackbar is now red
+          ),
+        );
       }
     }
   }
@@ -104,88 +99,57 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
       stepDetailControllerProvider(widget.step).notifier,
     );
 
-    return Column(
-      children: [
-        // Header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                "Worker Logs",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    // Using CustomScrollView ensures the form and the list scroll together,
+    // preventing any layout overflows when the keyboard pops up or on small screens.
+    return RefreshIndicator(
+      onRefresh: controller.refreshWorkLogs,
+      child: Container(
+        color: Colors.grey[50],
+        child: CustomScrollView(
+          controller: widget.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  const Divider(height: 1),
+                  if (_isAddingLog) _buildAddLogForm(),
+                ],
               ),
-              if (widget.canEdit && !_isAddingLog)
-                ElevatedButton.icon(
-                  onPressed: () => setState(() => _isAddingLog = true),
-                  icon: const Icon(Icons.add),
-                  label: const Text("Add Log"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-
-        // Form Area
-        if (_isAddingLog) _buildAddLogForm(),
-
-        // List Area
-        Expanded(
-          child: Container(
-            color: Colors.grey[50],
-            child: logsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text("Error: $err")),
-              data: (logs) {
-                if (logs.isEmpty && !_isAddingLog) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.history_toggle_off,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          "No work logs found.",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: controller.refreshWorkLogs,
-                  child: ListView.builder(
-                    controller: widget.scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16),
-                    itemCount: logs.length,
-                    itemBuilder: (context, index) {
-                      final log = logs[index];
-                      return _buildLogCard(log);
-                    },
-                  ),
-                );
-              },
             ),
-          ),
+            _buildLogsList(logsAsync),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "Worker Logs",
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          if (widget.canEdit && !_isAddingLog)
+            ElevatedButton.icon(
+              onPressed: () => setState(() => _isAddingLog = true),
+              icon: const Icon(Icons.add),
+              label: const Text("Add Log"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -262,7 +226,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
             controller: _descriptionController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: "Describe the work done...",
+              hintText: "Describe the work done (Optional)...",
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -280,10 +244,14 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: _submitLog,
+                onPressed: _canSave
+                    ? _submitLog
+                    : null, // Disabled if not valid
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  disabledForegroundColor: Colors.grey.shade600,
                 ),
                 child: const Text("Save Log"),
               ),
@@ -313,18 +281,21 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
           children: [
             Icon(icon, size: 20, color: Theme.of(context).primaryColor),
             const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -332,8 +303,51 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     );
   }
 
+  Widget _buildLogsList(AsyncValue<List<WorkLog>> logsAsync) {
+    return logsAsync.when(
+      loading: () => const SliverFillRemaining(
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, _) =>
+          SliverFillRemaining(child: Center(child: Text("Error: $err"))),
+      data: (logs) {
+        if (logs.isEmpty && !_isAddingLog) {
+          return SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.history_toggle_off,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No work logs found.",
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => _buildLogCard(logs[index]),
+              childCount: logs.length,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildLogCard(WorkLog log) {
-    // Convert backend strings to visual format if needed, but strings are fine
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
@@ -379,11 +393,13 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              log.description,
-              style: TextStyle(color: Colors.grey.shade800, height: 1.4),
-            ),
+            if (log.description.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                log.description,
+                style: TextStyle(color: Colors.grey.shade800, height: 1.4),
+              ),
+            ],
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.bottomRight,
