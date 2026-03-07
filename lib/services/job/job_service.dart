@@ -104,4 +104,40 @@ class JobService {
       throw Exception('Failed to upload attachment: $e');
     }
   }
+
+  // GET /worker/job-workflow-steps/{id}/visits
+  Future<List<WorkLog>> getWorkLogs(int stepId) async {
+    try {
+      final response = await _dio.get(
+        '/worker/job-workflow-steps/$stepId/visits',
+      );
+      final List data = response.data;
+      return data.map((json) => WorkLog.fromJson(json)).toList();
+    } catch (e) {
+      return []; // Return empty list on error to avoid breaking UI, log in real app
+    }
+  }
+
+  // POST /worker/job-workflow-steps/{id}/visits
+  Future<void> addWorkLog({
+    required int stepId,
+    required String visitDate,
+    required String timeIn,
+    required String timeOut,
+    required String description,
+  }) async {
+    try {
+      await _dio.post(
+        '/worker/job-workflow-steps/$stepId/visits',
+        data: {
+          "visitDate": visitDate,
+          "timeIn": timeIn,
+          "timeOut": timeOut,
+          "description": description,
+        },
+      );
+    } catch (e) {
+      throw Exception('Failed to add work log: $e');
+    }
+  }
 }

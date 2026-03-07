@@ -7,6 +7,7 @@ import 'package:mobile_frontend/widgets/app_branding.dart';
 import 'package:mobile_frontend/screens/step_detail/step_detail_controller.dart';
 import 'package:mobile_frontend/screens/step_detail/step_info_section.dart';
 import 'package:mobile_frontend/screens/step_detail/timeline_item_widget.dart';
+import 'package:mobile_frontend/screens/step_detail/work_logs_sheet.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -212,6 +213,19 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
             ),
           const SizedBox(height: 16),
         ],
+
+        FloatingActionButton.extended(
+          heroTag: "work_logs_btn",
+          onPressed: () {
+            _showWorkLogsBottomSheet(context, step, canEdit);
+          },
+          icon: const Icon(Icons.timer),
+          label: const Text("Work Logs"),
+          backgroundColor: Colors.orange.shade700,
+          foregroundColor: Colors.white,
+        ),
+        const SizedBox(height: 16),
+
         FloatingActionButton.extended(
           heroTag: "comments_btn",
           onPressed: () {
@@ -320,6 +334,62 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                     ),
                     Expanded(
                       child: TimelineBottomSheet(
+                        step: step,
+                        canEdit: canEdit,
+                        scrollController: scrollController,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showWorkLogsBottomSheet(
+    BuildContext context,
+    JobStep step,
+    bool canEdit,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.65,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: Column(
+                  children: [
+                    // Drag Handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: WorkLogsSheet(
                         step: step,
                         canEdit: canEdit,
                         scrollController: scrollController,
