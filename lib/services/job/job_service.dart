@@ -106,15 +106,16 @@ class JobService {
   }
 
   // GET /worker/job-workflow-steps/{id}/visits
-  Future<List<WorkLog>> getWorkLogs(int stepId) async {
+  Future<WorkLogResponse> getWorkLogs(int stepId) async {
     try {
       final response = await _dio.get(
         '/worker/job-workflow-steps/$stepId/visits',
       );
-      final List data = response.data;
-      return data.map((json) => WorkLog.fromJson(json)).toList();
+      // Parse the new map response instead of a list
+      return WorkLogResponse.fromJson(response.data);
     } catch (e) {
-      return []; // Return empty list on error to avoid breaking UI, log in real app
+      // Return an empty response object on error to avoid breaking UI
+      return WorkLogResponse(visitLogs: [], totalWorkedMinutes: 0);
     }
   }
 
