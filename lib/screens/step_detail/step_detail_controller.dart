@@ -29,13 +29,41 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     return ref.refresh(stepTimelineProvider(state.step.id).future);
   }
 
-  // NEW: Added a dedicated method to refresh all step data
+  Future<void> refreshWorkLogs() {
+    return ref.refresh(stepWorkLogsProvider(state.step.id).future);
+  }
+
   Future<void> refreshStepData() async {
     state = state.copyWith(isLoading: true);
     try {
       await refreshTimeline();
-      // Refresh parent provider to fetch updated step statuses
+      await refreshWorkLogs();
       ref.refresh(assignedStepsFutureProvider);
+    } finally {
+      state = state.copyWith(isLoading: false);
+    }
+  }
+
+  Future<void> addWorkLog({
+    required String visitDate,
+    required String timeIn,
+    required String timeOut,
+    required String description,
+  }) async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await ref
+          .read(jobServiceProvider)
+          .addWorkLog(
+            stepId: state.step.id,
+            visitDate: visitDate,
+            timeIn: timeIn,
+            timeOut: timeOut,
+            description: description,
+          );
+      await refreshWorkLogs();
+    } catch (e) {
+      rethrow;
     } finally {
       state = state.copyWith(isLoading: false);
     }
