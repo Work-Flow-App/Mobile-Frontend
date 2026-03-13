@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'timeline_model.dart';
 
 // --- Step Enums & Extensions ---
-
-// Updated to match Java: INITIATED, NOT_STARTED, PENDING, ONGOING, STARTED, COMPLETED, SKIPPED
 enum StepStatus {
   INITIATED,
   NOT_STARTED,
@@ -15,10 +12,7 @@ enum StepStatus {
 }
 
 extension StepStatusExtension on StepStatus {
-  String get label {
-    // Human readable labels
-    return name.replaceAll('_', ' ');
-  }
+  String get label => name.replaceAll('_', ' ');
 
   Color get color {
     switch (this) {
@@ -57,6 +51,7 @@ extension StepStatusExtension on StepStatus {
   }
 }
 
+// --- Original JobStep Model ---
 class JobStep {
   final int id;
   final String name;
@@ -85,8 +80,8 @@ class JobStep {
     );
 
     return JobStep(
-      id: json['id'],
-      name: json['name'],
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
       description: json['description'] ?? "",
       orderIndex: json['orderIndex'] ?? 0,
       status: mappedStatus,
@@ -101,4 +96,134 @@ class JobStep {
   }
 
   bool isAssignedTo(int workerId) => assignedWorkerIds.contains(workerId);
+}
+
+// --- NEW API MODELS ---
+
+class CustomerAddress {
+  final String houseNumber;
+  final String street;
+  final String city;
+  final String county;
+  final String postalCode;
+  final String country;
+
+  CustomerAddress({
+    required this.houseNumber,
+    required this.street,
+    required this.city,
+    required this.county,
+    required this.postalCode,
+    required this.country,
+  });
+
+  factory CustomerAddress.fromJson(Map<String, dynamic>? json) {
+    if (json == null)
+      return CustomerAddress(
+        houseNumber: '',
+        street: '',
+        city: '',
+        county: '',
+        postalCode: '',
+        country: '',
+      );
+    return CustomerAddress(
+      houseNumber: json['houseNumber'] ?? '',
+      street: json['street'] ?? '',
+      city: json['city'] ?? '',
+      county: json['county'] ?? '',
+      postalCode: json['postalCode'] ?? '',
+      country: json['country'] ?? '',
+    );
+  }
+
+  String get fullAddress => [
+    houseNumber,
+    street,
+    city,
+    postalCode,
+    country,
+  ].where((e) => e.isNotEmpty).join(', ');
+}
+
+class Customer {
+  final int id;
+  final String name;
+  final String email;
+  final String telephone;
+  final String mobile;
+  final CustomerAddress address;
+
+  Customer({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.telephone,
+    required this.mobile,
+    required this.address,
+  });
+
+  factory Customer.fromJson(Map<String, dynamic> json) {
+    return Customer(
+      id: json['id'] ?? 0,
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      telephone: json['telephone'] ?? '',
+      mobile: json['mobile'] ?? '',
+      address: CustomerAddress.fromJson(json['address']),
+    );
+  }
+}
+
+class AssignedAsset {
+  final int assignmentId;
+  final int assetId;
+  final String? notes;
+  final String status;
+
+  AssignedAsset({
+    required this.assignmentId,
+    required this.assetId,
+    this.notes,
+    required this.status,
+  });
+
+  factory AssignedAsset.fromJson(Map<String, dynamic> json) {
+    return AssignedAsset(
+      assignmentId: json['assignmentId'] ?? 0,
+      assetId: json['assetId'] ?? 0,
+      notes: json['notes'],
+      status: json['status'] ?? 'UNKNOWN',
+    );
+  }
+}
+
+// The new root wrapper for the assigned step response
+class JobData {
+  final JobStep step;
+  final int jobId;
+  final Customer? customer;
+  final List<AssignedAsset> assignedAssets;
+
+  JobData({
+    required this.step,
+    required this.jobId,
+    this.customer,
+    required this.assignedAssets,
+  });
+
+  factory JobData.fromJson(Map<String, dynamic> json) {
+    return JobData(
+      step: JobStep.fromJson(json['step'] ?? {}),
+      jobId: json['jobId'] ?? 0,
+      customer: json['customer'] != null
+          ? Customer.fromJson(json['customer'])
+          : null,
+      assignedAssets:
+          (json['assignedAssets'] as List<dynamic>?)
+              ?.map((e) => AssignedAsset.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
 }
