@@ -11,12 +11,13 @@ class JobService {
   JobService(this._dio);
 
   // GET /worker/job-workflow-steps
-  Future<List<JobStep>> getAssignedSteps() async {
+  // GET /worker/job-workflow-steps
+  Future<List<JobData>> getAssignedSteps() async {
     try {
       final response = await _dio.get('/worker/job-workflow-steps');
       final List data = response.data;
       return data
-          .map((json) => JobStep.fromJson(json))
+          .map((json) => JobData.fromJson(json))
           .toList()
           .reversed
           .toList();
