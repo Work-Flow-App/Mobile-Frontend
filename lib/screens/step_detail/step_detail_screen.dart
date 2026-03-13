@@ -13,9 +13,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StepDetailScreen extends ConsumerStatefulWidget {
-  final JobStep step;
+  // CHANGED: Accept the full JobData wrapper instead of just JobStep
+  final JobData jobData;
+  final bool isEmbedded;
 
-  const StepDetailScreen({super.key, required this.step});
+  const StepDetailScreen({
+    super.key,
+    required this.jobData,
+    this.isEmbedded = false,
+  });
 
   @override
   ConsumerState<StepDetailScreen> createState() => _StepDetailScreenState();
@@ -63,12 +69,51 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenState = ref.watch(stepDetailControllerProvider(widget.step));
+    // CHANGED: Use jobData for the provider
+    final screenState = ref.watch(stepDetailControllerProvider(widget.jobData));
     final controller = ref.read(
-      stepDetailControllerProvider(widget.step).notifier,
+      stepDetailControllerProvider(widget.jobData).notifier,
     );
-    final currentStep = screenState.step;
+
+    // Extract both wrapper and the inner step
+    final currentJobData = screenState.jobData;
+    final currentStep = currentJobData.step;
     final canEdit = true; // Based on your auth logic
+
+    Widget bodyContent = LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          return _buildSplitLayout(
+            currentJobData,
+            currentStep,
+            canEdit,
+            screenState.isLoading,
+            controller,
+          );
+        } else {
+          return _buildMobileLayout(
+            currentJobData,
+            canEdit,
+            screenState.isLoading,
+            controller,
+          );
+        }
+      },
+    );
+
+    if (widget.isEmbedded) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: _buildFloatingActionButtons(
+          context,
+          currentStep,
+          canEdit,
+          screenState.isLoading,
+          controller,
+        ),
+        body: bodyContent, // Renders straight into the LayoutBuilder
+      );
+    }
 
     return Scaffold(
       // Stacked Floating Action Buttons
@@ -94,12 +139,14 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               ),
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context, currentStep),
+                onPressed: () => Navigator.pop(
+                  context,
+                  currentJobData,
+                ), // Return wrapper on pop
               ),
-              floating: true, // Appears as soon as you scroll up
-              snap: true, // Snaps fully into view
-              pinned:
-                  false, // Scrolls completely out of view when scrolling down
+              floating: true,
+              snap: true,
+              pinned: false,
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               foregroundColor: Colors.black,
               elevation: 2,
@@ -121,6 +168,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
           builder: (context, constraints) {
             if (constraints.maxWidth > 800) {
               return _buildSplitLayout(
+                currentJobData,
                 currentStep,
                 canEdit,
                 screenState.isLoading,
@@ -128,7 +176,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               );
             } else {
               return _buildMobileLayout(
-                currentStep,
+                currentJobData,
                 canEdit,
                 screenState.isLoading,
                 controller,
@@ -239,19 +287,18 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   }
 
   Widget _buildMobileLayout(
-    JobStep step,
+    JobData jobData, // CHANGED: Pass full wrapper
     bool canEdit,
     bool isLoading,
     StepDetailController controller,
   ) {
-    // Wrapped in RefreshIndicator
     return RefreshIndicator(
       onRefresh: controller.refreshStepData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: 160),
         child: StepInfoSection(
-          step: step,
+          jobData: jobData, // CHANGED
           canEdit: canEdit,
           isLoading: isLoading,
         ),
@@ -260,7 +307,8 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
   }
 
   Widget _buildSplitLayout(
-    JobStep step,
+    JobData jobData, // CHANGED
+    JobStep step, // Kept for bottom sheet
     bool canEdit,
     bool isLoading,
     StepDetailController controller,
@@ -270,13 +318,12 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       children: [
         SizedBox(
           width: 400,
-          // Wrapped in RefreshIndicator
           child: RefreshIndicator(
             onRefresh: controller.refreshStepData,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: StepInfoSection(
-                step: step,
+                jobData: jobData, // CHANGED
                 canEdit: canEdit,
                 isLoading: isLoading,
               ),
@@ -376,7 +423,6 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Drag Handle
                     Center(
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 12),
@@ -445,9 +491,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final timelineAsync = ref.watch(stepTimelineProvider(widget.step.id));
-    final controller = ref.read(
-      stepDetailControllerProvider(widget.step).notifier,
-    );
+
     final currentWorkerId = ref.read(jobServiceProvider).currentWorkerId;
 
     Widget buildListContent() {
@@ -461,7 +505,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
 
             if (filteredEvents.isEmpty) {
               return RefreshIndicator(
-                onRefresh: controller.refreshTimeline,
+                onRefresh: () =>
+                    ref.refresh(stepTimelineProvider(widget.step.id).future),
                 child: ListView(
                   controller: widget.scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -479,7 +524,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
 
             if (_isAttachmentOnlyMode) {
               return RefreshIndicator(
-                onRefresh: controller.refreshTimeline,
+                onRefresh: () =>
+                    ref.refresh(stepTimelineProvider(widget.step.id).future),
                 child: _buildGalleryView(
                   filteredEvents,
                   widget.scrollController,
@@ -488,7 +534,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
             }
 
             return RefreshIndicator(
-              onRefresh: controller.refreshTimeline,
+              onRefresh: () =>
+                  ref.refresh(stepTimelineProvider(widget.step.id).future),
               child: ListView.builder(
                 controller: widget.scrollController,
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -516,10 +563,9 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildAdvancedFilterBar(controller),
+                _buildAdvancedFilterBar(),
                 SizedBox(height: 300, child: buildListContent()),
-                if (widget.canEdit && !_isAttachmentOnlyMode)
-                  _buildInputArea(controller),
+                if (widget.canEdit && !_isAttachmentOnlyMode) _buildInputArea(),
               ],
             ),
           );
@@ -527,17 +573,16 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
 
         return Column(
           children: [
-            _buildAdvancedFilterBar(controller),
+            _buildAdvancedFilterBar(),
             Expanded(child: buildListContent()),
-            if (widget.canEdit && !_isAttachmentOnlyMode)
-              _buildInputArea(controller),
+            if (widget.canEdit && !_isAttachmentOnlyMode) _buildInputArea(),
           ],
         );
       },
     );
   }
 
-  Widget _buildAdvancedFilterBar(StepDetailController controller) {
+  Widget _buildAdvancedFilterBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -591,7 +636,8 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
           IconButton(
             icon: Icon(Icons.refresh, color: Theme.of(context).primaryColor),
             tooltip: "Refresh Activity",
-            onPressed: () => controller.refreshTimeline(),
+            onPressed: () =>
+                ref.refresh(stepTimelineProvider(widget.step.id).future),
           ),
         ],
       ),
@@ -765,7 +811,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     );
   }
 
-  Widget _buildInputArea(StepDetailController controller) {
+  Widget _buildInputArea() {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.all(12),
@@ -816,7 +862,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
               children: [
                 IconButton(
                   icon: const Icon(Icons.attach_file, color: Colors.grey),
-                  onPressed: () => _showAttachmentOptions(controller),
+                  onPressed: () => _showAttachmentOptions(),
                 ),
                 Expanded(
                   child: Container(
@@ -848,11 +894,17 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
                     icon: const Icon(Icons.send, color: Colors.white, size: 20),
                     onPressed: () async {
                       try {
-                        await controller.addComment(
-                          commentController.text,
-                          _inputType,
-                        );
+                        await ref
+                            .read(jobServiceProvider)
+                            .addComment(
+                              widget.step.id,
+                              commentController.text.trim(),
+                              _inputType,
+                            );
                         commentController.clear();
+                        ref.refresh(
+                          stepTimelineProvider(widget.step.id).future,
+                        );
                       } catch (e) {
                         ScaffoldMessenger.of(
                           context,
@@ -881,7 +933,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
     }).toList();
   }
 
-  void _showAttachmentOptions(StepDetailController controller) {
+  void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -891,7 +943,10 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
       builder: (context) {
         return _AttachmentUploadSheet(
           onUpload: (path, type, desc) async {
-            await controller.uploadFile(path, type, desc);
+            await ref
+                .read(jobServiceProvider)
+                .addAttachment(widget.step.id, path, type, desc);
+            ref.refresh(stepTimelineProvider(widget.step.id).future);
             if (mounted) Navigator.pop(context);
           },
         );

@@ -78,9 +78,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/step-detail',
         name: 'step-detail',
         builder: (context, state) {
-          // Pass the JobStep object via 'extra'
-          final step = state.extra as JobStep;
-          return StepDetailScreen(step: step);
+          final jobData = state.extra as JobData;
+          return StepDetailScreen(jobData: jobData);
         },
       ),
 

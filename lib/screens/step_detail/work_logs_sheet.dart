@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/models/job/work_log_model.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
-import 'package:mobile_frontend/screens/step_detail/step_detail_controller.dart';
 
 class WorkLogsSheet extends ConsumerStatefulWidget {
   final JobStep step;
@@ -72,17 +71,20 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
   Future<void> _submitLog() async {
     if (!_canSave) return;
 
-    final controller = ref.read(
-      stepDetailControllerProvider(widget.step).notifier,
-    );
-
     try {
-      await controller.addWorkLog(
-        visitDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
-        timeIn: _formatTimeForApi(_timeIn!),
-        timeOut: _formatTimeForApi(_timeOut!),
-        description: _descriptionController.text.trim(),
-      );
+      // CHANGED: Talk directly to the jobServiceProvider instead of the controller
+      await ref
+          .read(jobServiceProvider)
+          .addWorkLog(
+            stepId: widget.step.id,
+            visitDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
+            timeIn: _formatTimeForApi(_timeIn!),
+            timeOut: _formatTimeForApi(_timeOut!),
+            description: _descriptionController.text.trim(),
+          );
+
+      // Refresh the provider directly
+      ref.refresh(stepWorkLogsProvider(widget.step.id).future);
 
       // Reset form
       setState(() {
@@ -113,12 +115,12 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
   @override
   Widget build(BuildContext context) {
     final logsAsync = ref.watch(stepWorkLogsProvider(widget.step.id));
-    final controller = ref.read(
-      stepDetailControllerProvider(widget.step).notifier,
-    );
 
     return RefreshIndicator(
-      onRefresh: controller.refreshWorkLogs,
+      // CHANGED: Refresh the provider directly instead of using the controller
+      onRefresh: () async {
+        return ref.refresh(stepWorkLogsProvider(widget.step.id).future);
+      },
       child: Container(
         color: Colors.grey[50],
         child: CustomScrollView(
@@ -466,7 +468,6 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Beautiful display for duration
                     Text(
                       _formatDuration(log.workedMinutes),
                       style: TextStyle(

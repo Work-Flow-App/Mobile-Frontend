@@ -10,7 +10,7 @@ final jobServiceProvider = Provider((ref) {
   return JobService(dio);
 });
 
-final assignedStepsFutureProvider = FutureProvider<List<JobStep>>((ref) async {
+final assignedStepsFutureProvider = FutureProvider<List<JobData>>((ref) async {
   return ref.watch(jobServiceProvider).getAssignedSteps();
 });
 
@@ -31,14 +31,15 @@ final stepWorkLogsProvider = FutureProvider.family<WorkLogResponse, int>((
 
 final stepStatusFilterProvider = StateProvider<StepStatus?>((ref) => null);
 
-final filteredStepsProvider = Provider<List<JobStep>>((ref) {
+final filteredStepsProvider = Provider<List<JobData>>((ref) {
   final stepsAsync = ref.watch(assignedStepsFutureProvider);
   final filter = ref.watch(stepStatusFilterProvider);
 
   return stepsAsync.when(
-    data: (steps) => filter == null
-        ? steps
-        : steps.where((s) => s.status == filter).toList(),
+    // Filter by looking at the nested .step.status
+    data: (jobDataList) => filter == null
+        ? jobDataList
+        : jobDataList.where((jd) => jd.step.status == filter).toList(),
     loading: () => [],
     error: (_, __) => [],
   );

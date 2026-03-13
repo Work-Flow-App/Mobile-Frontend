@@ -3,30 +3,32 @@ import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:intl/intl.dart';
 
 class StepCard extends StatelessWidget {
-  final JobStep step;
+  final JobData jobData;
   final VoidCallback onTap;
   final bool isSelected;
 
   const StepCard({
     super.key,
-    required this.step,
+    required this.jobData,
     required this.onTap,
     this.isSelected = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final step = jobData.step;
+    final customer = jobData.customer;
     final statusColor = step.status.color;
     final statusBgColor = step.status.backgroundColor;
 
-    // Formatting date if available, otherwise it remains null
+    // Prioritize the completedAt check so completed steps show the right date
     String? dateStr;
-    if (step.startedAt != null) {
-      dateStr =
-          "Started: ${DateFormat('MMM dd, HH:mm').format(step.startedAt!)}";
-    } else if (step.completedAt != null) {
+    if (step.completedAt != null) {
       dateStr =
           "Completed: ${DateFormat('MMM dd, HH:mm').format(step.completedAt!)}";
+    } else if (step.startedAt != null) {
+      dateStr =
+          "Started: ${DateFormat('MMM dd, HH:mm').format(step.startedAt!)}";
     }
 
     return Card(
@@ -47,19 +49,19 @@ class StepCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header: Job ID, Step ID & Status
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Text(
-                      step.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  // CHANGED: Now displaying both Job ID and Step ID!
+                  Text(
+                    "Job #${jobData.jobId} • Step #${step.id}",
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -81,8 +83,18 @@ class StepCard extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+
+              // Step Name
+              Text(
+                step.name,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+
               if (step.description.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 Text(
                   step.description,
                   maxLines: 2,
@@ -91,7 +103,34 @@ class StepCard extends StatelessWidget {
                 ),
               ],
 
-              // Only show the Divider and the Date Row if dateStr is not null
+              // Customer Info (if available)
+              if (customer != null && customer.name.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: 16,
+                      color: Colors.blueGrey.shade400,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        customer.name,
+                        style: TextStyle(
+                          color: Colors.blueGrey.shade700,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              // Date Info
               if (dateStr != null) ...[
                 const SizedBox(height: 12),
                 Divider(height: 1, color: Colors.grey[200]),

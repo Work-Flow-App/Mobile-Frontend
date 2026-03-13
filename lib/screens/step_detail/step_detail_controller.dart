@@ -6,14 +6,14 @@ import 'package:mobile_frontend/providers/job/job_provider.dart';
 // 1. State class to hold loading status and current step data
 class StepDetailState {
   final bool isLoading;
-  final JobStep step;
+  final JobData jobData; // Updated
 
-  StepDetailState({required this.isLoading, required this.step});
+  StepDetailState({required this.isLoading, required this.jobData});
 
-  StepDetailState copyWith({bool? isLoading, JobStep? step}) {
+  StepDetailState copyWith({bool? isLoading, JobData? jobData}) {
     return StepDetailState(
       isLoading: isLoading ?? this.isLoading,
-      step: step ?? this.step,
+      jobData: jobData ?? this.jobData,
     );
   }
 }
@@ -22,15 +22,15 @@ class StepDetailState {
 class StepDetailController extends StateNotifier<StepDetailState> {
   final Ref ref;
 
-  StepDetailController(this.ref, JobStep initialStep)
-    : super(StepDetailState(isLoading: false, step: initialStep));
+  StepDetailController(this.ref, JobData initialData)
+    : super(StepDetailState(isLoading: false, jobData: initialData));
 
   Future<void> refreshTimeline() {
-    return ref.refresh(stepTimelineProvider(state.step.id).future);
+    return ref.refresh(stepTimelineProvider(state.jobData.step.id).future);
   }
 
   Future<void> refreshWorkLogs() {
-    return ref.refresh(stepWorkLogsProvider(state.step.id).future);
+    return ref.refresh(stepWorkLogsProvider(state.jobData.step.id).future);
   }
 
   Future<void> refreshStepData() async {
@@ -55,7 +55,7 @@ class StepDetailController extends StateNotifier<StepDetailState> {
       await ref
           .read(jobServiceProvider)
           .addWorkLog(
-            stepId: state.step.id,
+            stepId: state.jobData.step.id,
             visitDate: visitDate,
             timeIn: timeIn,
             timeOut: timeOut,
@@ -72,42 +72,56 @@ class StepDetailController extends StateNotifier<StepDetailState> {
   Future<void> startStep() async {
     state = state.copyWith(isLoading: true);
     try {
-      await ref.read(jobServiceProvider).startStep(state.step.id);
+      await ref.read(jobServiceProvider).startStep(state.jobData.step.id);
 
-      // Optimistic update
       final updatedStep = JobStep(
-        id: state.step.id,
-        name: state.step.name,
-        description: state.step.description,
-        orderIndex: state.step.orderIndex,
+        id: state.jobData.step.id,
+        name: state.jobData.step.name,
+        description: state.jobData.step.description,
+        orderIndex: state.jobData.step.orderIndex,
         status: StepStatus.STARTED,
-        assignedWorkerIds: state.step.assignedWorkerIds,
+        assignedWorkerIds: state.jobData.step.assignedWorkerIds,
       );
 
-      state = state.copyWith(isLoading: false, step: updatedStep);
+      // Recreate the wrapper
+      final updatedJobData = JobData(
+        step: updatedStep,
+        jobId: state.jobData.jobId,
+        customer: state.jobData.customer,
+        assignedAssets: state.jobData.assignedAssets,
+      );
+
+      state = state.copyWith(isLoading: false, jobData: updatedJobData);
       refreshTimeline();
       ref.refresh(assignedStepsFutureProvider);
     } catch (e) {
       state = state.copyWith(isLoading: false);
-      rethrow; // Let UI handle error display
+      rethrow;
     }
   }
 
   Future<void> completeStep() async {
     state = state.copyWith(isLoading: true);
     try {
-      await ref.read(jobServiceProvider).completeStep(state.step.id);
+      await ref.read(jobServiceProvider).completeStep(state.jobData.step.id);
 
       final updatedStep = JobStep(
-        id: state.step.id,
-        name: state.step.name,
-        description: state.step.description,
-        orderIndex: state.step.orderIndex,
+        id: state.jobData.step.id,
+        name: state.jobData.step.name,
+        description: state.jobData.step.description,
+        orderIndex: state.jobData.step.orderIndex,
         status: StepStatus.COMPLETED,
-        assignedWorkerIds: state.step.assignedWorkerIds,
+        assignedWorkerIds: state.jobData.step.assignedWorkerIds,
       );
 
-      state = state.copyWith(isLoading: false, step: updatedStep);
+      final updatedJobData = JobData(
+        step: updatedStep,
+        jobId: state.jobData.jobId,
+        customer: state.jobData.customer,
+        assignedAssets: state.jobData.assignedAssets,
+      );
+
+      state = state.copyWith(isLoading: false, jobData: updatedJobData);
       refreshTimeline();
       ref.refresh(assignedStepsFutureProvider);
     } catch (e) {
@@ -121,7 +135,7 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     try {
       await ref
           .read(jobServiceProvider)
-          .addComment(state.step.id, text.trim(), type);
+          .addComment(state.jobData.step.id, text.trim(), type);
       refreshTimeline();
     } catch (e) {
       rethrow;
@@ -137,7 +151,7 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     try {
       await ref
           .read(jobServiceProvider)
-          .addAttachment(state.step.id, path, type, description);
+          .addAttachment(state.jobData.step.id, path, type, description);
       refreshTimeline();
     } catch (e) {
       rethrow;
@@ -149,6 +163,9 @@ class StepDetailController extends StateNotifier<StepDetailState> {
 
 // 3. Provider Family to create a unique controller for each Step ID
 final stepDetailControllerProvider = StateNotifierProvider.family
-    .autoDispose<StepDetailController, StepDetailState, JobStep>((ref, step) {
-      return StepDetailController(ref, step);
+    .autoDispose<StepDetailController, StepDetailState, JobData>((
+      ref,
+      jobData,
+    ) {
+      return StepDetailController(ref, jobData);
     });
