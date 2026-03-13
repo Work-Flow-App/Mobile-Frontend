@@ -27,9 +27,7 @@ class AssignedStepListView extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverFillRemaining(
-                child: const Center(
-                  child: Text("No steps found."),
-                ),
+                child: const Center(child: Text("No steps found.")),
               ),
             ],
           ),
@@ -47,16 +45,21 @@ class AssignedStepListView extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: filteredSteps.length,
+        // Inside AssignedStepListView
         itemBuilder: (context, index) {
-          final step = filteredSteps[index];
+          final jobItem = filteredSteps[index]; 
           return StepCard(
-            step: step,
-            isSelected: isTablet && step.id == selectedId,
+            jobData: jobItem,
+            isSelected: isTablet && jobItem.step.id == selectedId,
             onTap: () {
               if (isTablet) {
-                ref.read(selectedStepIdProvider.notifier).state = step.id;
+                ref.read(selectedStepIdProvider.notifier).state =
+                    jobItem.step.id;
               } else {
-                context.push('/step-detail', extra: step);
+                context.push(
+                  '/step-detail',
+                  extra: jobItem,
+                ); // Send whole wrapper
               }
             },
           );

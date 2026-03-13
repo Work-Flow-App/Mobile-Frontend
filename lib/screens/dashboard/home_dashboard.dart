@@ -186,9 +186,10 @@ class TabletSplitView extends ConsumerWidget {
         ),
       );
     } else {
-      final selectedStep = allSteps.firstWhere((s) => s.id == selectedStepId);
-      // Reuse StepDetailScreen directly
-      detailView = StepDetailScreen(step: selectedStep);
+      final selectedJobData = allSteps.firstWhere(
+        (s) => s.step.id == selectedStepId,
+      );
+      detailView = StepDetailScreen(jobData: selectedJobData);
     }
 
     return Row(
