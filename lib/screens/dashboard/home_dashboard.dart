@@ -189,7 +189,8 @@ class TabletSplitView extends ConsumerWidget {
       final selectedJobData = allSteps.firstWhere(
         (s) => s.step.id == selectedStepId,
       );
-      detailView = StepDetailScreen(jobData: selectedJobData);
+      detailView = StepDetailScreen(jobData: selectedJobData,
+      isEmbedded: true,);
     }
 
     return Row(

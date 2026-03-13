@@ -15,8 +15,13 @@ import 'package:url_launcher/url_launcher.dart';
 class StepDetailScreen extends ConsumerStatefulWidget {
   // CHANGED: Accept the full JobData wrapper instead of just JobStep
   final JobData jobData;
+  final bool isEmbedded;
 
-  const StepDetailScreen({super.key, required this.jobData});
+  const StepDetailScreen({
+    super.key,
+    required this.jobData,
+    this.isEmbedded = false,
+  });
 
   @override
   ConsumerState<StepDetailScreen> createState() => _StepDetailScreenState();
@@ -74,6 +79,41 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
     final currentJobData = screenState.jobData;
     final currentStep = currentJobData.step;
     final canEdit = true; // Based on your auth logic
+
+    Widget bodyContent = LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 800) {
+          return _buildSplitLayout(
+            currentJobData,
+            currentStep,
+            canEdit,
+            screenState.isLoading,
+            controller,
+          );
+        } else {
+          return _buildMobileLayout(
+            currentJobData,
+            canEdit,
+            screenState.isLoading,
+            controller,
+          );
+        }
+      },
+    );
+
+    if (widget.isEmbedded) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        floatingActionButton: _buildFloatingActionButtons(
+          context,
+          currentStep,
+          canEdit,
+          screenState.isLoading,
+          controller,
+        ),
+        body: bodyContent, // Renders straight into the LayoutBuilder
+      );
+    }
 
     return Scaffold(
       // Stacked Floating Action Buttons
