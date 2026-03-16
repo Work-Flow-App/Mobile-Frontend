@@ -43,7 +43,12 @@ class AssignedStepListView extends ConsumerWidget {
       child: ListView.builder(
         // Add physics to ensure the list is always scrollable (needed for pull-to-refresh to work even if the list is short)
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(
+          top: 16,
+          left: 16,
+          right: 16,
+          bottom: 100, 
+        ),
         itemCount: filteredSteps.length,
         // Inside AssignedStepListView
         itemBuilder: (context, index) {
