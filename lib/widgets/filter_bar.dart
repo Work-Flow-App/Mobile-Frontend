@@ -50,7 +50,7 @@ class FilterBar extends ConsumerWidget {
           ref.read(stepStatusFilterProvider.notifier).state = status;
           ref.read(selectedStepIdProvider.notifier).state = null;
         },
-        selectedColor: status.backgroundColor.withOpacity(1.0),
+        selectedColor: status.backgroundColor.withOpacity(0.20),
         backgroundColor: Colors.white,
         checkmarkColor: status.color,
         labelStyle: TextStyle(
