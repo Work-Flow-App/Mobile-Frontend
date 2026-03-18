@@ -81,7 +81,7 @@ class StepCard extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                "JOB #${jobData.jobId}  •  STEP #${step.id}",
+                                "JOB #${jobData.jobId}  •  STEP #${step.orderIndex}",
                                 style: TextStyle(
                                   color: Colors.blueGrey.shade400,
                                   fontWeight: FontWeight.w700,
