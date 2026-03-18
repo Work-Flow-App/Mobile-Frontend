@@ -26,7 +26,7 @@ class StepInfoSection extends ConsumerWidget {
         children: [
           // Subhead Job ID
           Text(
-            "JOB #${jobData.jobId}  •  STEP #${step.id}",
+            "JOB #${jobData.jobId}  •  STEP #${step.orderIndex}",
             style: TextStyle(
               color: Colors.blue.shade700,
               fontWeight: FontWeight.bold,
