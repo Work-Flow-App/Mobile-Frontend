@@ -6,7 +6,6 @@ import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
 import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
 import 'dart:ui';
-// Import the new list view
 import 'assigned_step_list_view.dart';
 
 class HomeDashboard extends ConsumerWidget {
@@ -86,11 +85,12 @@ class HomeDashboard extends ConsumerWidget {
 
       // 2. Add the FAB
       floatingActionButton: FloatingActionButton(
+        mini: true,
         onPressed: () => _showMenuBottomSheet(context, ref, isAdmin),
         backgroundColor: Colors.black, // Match your app branding
         foregroundColor: Colors.white,
         elevation: 4,
-        child: const Icon(Icons.menu),
+        child: const Icon(Icons.menu, size: 20), 
       ),
 
       body: stepsAsync.when(
