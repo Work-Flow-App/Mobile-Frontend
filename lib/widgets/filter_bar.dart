@@ -11,7 +11,7 @@ class FilterBar extends ConsumerWidget {
     final currentFilter = ref.watch(stepStatusFilterProvider);
 
     return Container(
-      height: 60,
+      height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -21,7 +21,6 @@ class FilterBar extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         children: [
           _buildFilterChip(context, ref, "All", null, currentFilter == null),
-          // Iterate over the specific enum order you prefer
           _buildEnumChip(context, ref, StepStatus.STARTED, currentFilter),
           _buildEnumChip(context, ref, StepStatus.NOT_STARTED, currentFilter),
           _buildEnumChip(context, ref, StepStatus.COMPLETED, currentFilter),
@@ -42,8 +41,10 @@ class FilterBar extends ConsumerWidget {
   ) {
     final isSelected = currentFilter == status;
     return Padding(
-      padding: const EdgeInsets.only(right: 8.0, top: 12, bottom: 12),
+      padding: const EdgeInsets.only(right: 6.0, top: 4, bottom: 4),
       child: FilterChip(
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         label: Text(status.label),
         selected: isSelected,
         onSelected: (_) {
@@ -54,15 +55,16 @@ class FilterBar extends ConsumerWidget {
         backgroundColor: Colors.white,
         checkmarkColor: status.color,
         labelStyle: TextStyle(
+          fontSize: 12,
           color: isSelected ? status.color : Colors.black87,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
         shape: RoundedRectangleBorder(
           side: BorderSide(
             color: isSelected ? status.color : Colors.grey.shade300,
-            width: 1.5,
+            width: 1.0,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         showCheckmark: false,
       ),
@@ -77,8 +79,10 @@ class FilterBar extends ConsumerWidget {
     bool isSelected,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(right: 8.0, top: 12, bottom: 12),
+      padding: const EdgeInsets.only(right: 6.0, top: 4, bottom: 4),
       child: FilterChip(
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         label: Text(label),
         selected: isSelected,
         onSelected: (_) {
@@ -88,12 +92,13 @@ class FilterBar extends ConsumerWidget {
         selectedColor: Colors.black,
         checkmarkColor: Colors.white,
         labelStyle: TextStyle(
+          fontSize: 12,
           color: isSelected ? Colors.white : Colors.black,
           fontWeight: FontWeight.bold,
         ),
         shape: RoundedRectangleBorder(
-          side: const BorderSide(color: Colors.black, width: 1.5),
-          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.black, width: 1.0),
+          borderRadius: BorderRadius.circular(16),
         ),
         backgroundColor: Colors.white,
       ),
