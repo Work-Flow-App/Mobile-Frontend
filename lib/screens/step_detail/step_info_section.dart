@@ -18,6 +18,7 @@ class StepInfoSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final step = jobData.step;
     final customer = jobData.customer;
+    final jobAddress = jobData.jobAddress;
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -75,6 +76,74 @@ class StepInfoSection extends ConsumerWidget {
               style: Theme.of(
                 context,
               ).textTheme.bodyLarge?.copyWith(height: 1.5),
+            ),
+            const SizedBox(height: 32),
+          ],
+
+          // JOB ADDRESS CARD 
+          if (jobAddress != null) ...[
+            Text(
+              "Service Location",
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.red.shade50,
+                        child: Icon(Icons.location_on, color: Colors.red.shade700),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          jobAddress.fullAddress,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (jobAddress.additionalInfo != null && jobAddress.additionalInfo!.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(),
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline, size: 18, color: Colors.grey.shade500),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            jobAddress.additionalInfo!,
+                            style: TextStyle(color: Colors.grey.shade800, height: 1.4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
             const SizedBox(height: 32),
           ],

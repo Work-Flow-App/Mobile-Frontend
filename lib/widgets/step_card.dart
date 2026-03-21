@@ -18,6 +18,7 @@ class StepCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final step = jobData.step;
     final customer = jobData.customer;
+    final jobAddress = jobData.jobAddress; // Extract the new jobAddress
     final statusColor = step.status.color;
     final statusBgColor = step.status.backgroundColor;
 
@@ -139,8 +140,10 @@ class StepCard extends StatelessWidget {
                             ),
                           ],
 
-                          // --- CUSTOMER INFO SECTION ---
-                          if (customer != null && customer.name.isNotEmpty) ...[
+                          // --- SERVICE INFO SECTION ---
+                          // Check for either a customer name or a job address
+                          if ((customer != null && customer.name.isNotEmpty) ||
+                              jobAddress != null) ...[
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.all(12),
@@ -156,33 +159,38 @@ class StepCard extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.person,
-                                        size: 16,
-                                        color: Colors.blueGrey.shade600,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          customer.name,
-                                          style: TextStyle(
-                                            color: Colors.blueGrey.shade900,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                  // 1. Customer Name
+                                  if (customer != null &&
+                                      customer.name.isNotEmpty) ...[
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.person,
+                                          size: 16,
+                                          color: Colors.blueGrey.shade600,
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (customer
-                                      .address
-                                      .fullAddress
-                                      .isNotEmpty) ...[
-                                    const SizedBox(height: 6),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            customer.name,
+                                            style: TextStyle(
+                                              color: Colors.blueGrey.shade900,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    // Add spacing if we also have an address
+                                    if (jobAddress != null)
+                                      const SizedBox(height: 8),
+                                  ],
+
+                                  // 2. Job Address (Service Location)
+                                  if (jobAddress != null) ...[
                                     Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -195,7 +203,7 @@ class StepCard extends StatelessWidget {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            customer.address.fullAddress,
+                                            jobAddress.fullAddress,
                                             style: TextStyle(
                                               color: Colors.blueGrey.shade700,
                                               fontSize: 12,

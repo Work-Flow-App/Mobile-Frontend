@@ -98,7 +98,53 @@ class JobStep {
   bool isAssignedTo(int workerId) => assignedWorkerIds.contains(workerId);
 }
 
-// --- NEW API MODELS ---
+
+// Job Address Model
+class JobAddress {
+  final int id;
+  final String street;
+  final String city;
+  final String state;
+  final String postalCode;
+  final String country;
+  final String? additionalInfo;
+  final double? latitude;
+  final double? longitude;
+
+  JobAddress({
+    required this.id,
+    required this.street,
+    required this.city,
+    required this.state,
+    required this.postalCode,
+    required this.country,
+    this.additionalInfo,
+    this.latitude,
+    this.longitude,
+  });
+
+  factory JobAddress.fromJson(Map<String, dynamic> json) {
+    return JobAddress(
+      id: json['id'] ?? 0,
+      street: json['street'] ?? '',
+      city: json['city'] ?? '',
+      state: json['state'] ?? '',
+      postalCode: json['postalCode'] ?? '',
+      country: json['country'] ?? '',
+      additionalInfo: json['additionalInfo'],
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+    );
+  }
+
+  String get fullAddress => [
+    street,
+    city,
+    state,
+    postalCode,
+    country,
+  ].where((e) => e.isNotEmpty).join(', ');
+}
 
 class CustomerAddress {
   final String houseNumber;
@@ -118,7 +164,7 @@ class CustomerAddress {
   });
 
   factory CustomerAddress.fromJson(Map<String, dynamic>? json) {
-    if (json == null)
+    if (json == null) {
       return CustomerAddress(
         houseNumber: '',
         street: '',
@@ -127,6 +173,7 @@ class CustomerAddress {
         postalCode: '',
         country: '',
       );
+    }
     return CustomerAddress(
       houseNumber: json['houseNumber'] ?? '',
       street: json['street'] ?? '',
@@ -204,12 +251,14 @@ class JobData {
   final int jobId;
   final Customer? customer;
   final List<AssignedAsset> assignedAssets;
+  final JobAddress? jobAddress; // NEW: Added jobAddress field
 
   JobData({
     required this.step,
     required this.jobId,
     this.customer,
     required this.assignedAssets,
+    this.jobAddress, // NEW
   });
 
   factory JobData.fromJson(Map<String, dynamic> json) {
@@ -224,6 +273,9 @@ class JobData {
               ?.map((e) => AssignedAsset.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      jobAddress: json['jobAddress'] != null
+          ? JobAddress.fromJson(json['jobAddress'])
+          : null, // NEW: Parse jobAddress
     );
   }
 }

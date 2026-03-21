@@ -89,6 +89,7 @@ class StepDetailController extends StateNotifier<StepDetailState> {
         jobId: state.jobData.jobId,
         customer: state.jobData.customer,
         assignedAssets: state.jobData.assignedAssets,
+        jobAddress: state.jobData.jobAddress,
       );
 
       state = state.copyWith(isLoading: false, jobData: updatedJobData);
@@ -119,6 +120,7 @@ class StepDetailController extends StateNotifier<StepDetailState> {
         jobId: state.jobData.jobId,
         customer: state.jobData.customer,
         assignedAssets: state.jobData.assignedAssets,
+        jobAddress: state.jobData.jobAddress,
       );
 
       state = state.copyWith(isLoading: false, jobData: updatedJobData);
