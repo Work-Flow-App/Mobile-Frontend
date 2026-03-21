@@ -296,7 +296,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
       onRefresh: controller.refreshStepData,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 160),
+        padding: const EdgeInsets.only(bottom: 200),
         child: StepInfoSection(
           jobData: jobData, // CHANGED
           canEdit: canEdit,

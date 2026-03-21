@@ -47,7 +47,7 @@ class AssignedStepListView extends ConsumerWidget {
           top: 16,
           left: 16,
           right: 16,
-          bottom: 100, 
+          bottom: 70, 
         ),
         itemCount: filteredSteps.length,
         // Inside AssignedStepListView
