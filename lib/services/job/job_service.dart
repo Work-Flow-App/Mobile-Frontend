@@ -59,6 +59,24 @@ class JobService {
     }
   }
 
+  // POST /worker/job-workflow-steps/{id}/ongoing
+  Future<void> markStepOngoing(int stepId) async {
+    try {
+      await _dio.post('/worker/job-workflow-steps/$stepId/ongoing');
+    } catch (e) {
+      throw Exception('Failed to mark step as ongoing: $e');
+    }
+  }
+
+  // POST /worker/job-workflow-steps/{id}/complete-ongoing
+  Future<void> completeOngoingStep(int stepId) async {
+    try {
+      await _dio.post('/worker/job-workflow-steps/$stepId/complete-ongoing');
+    } catch (e) {
+      throw Exception('Failed to complete ongoing step: $e');
+    }
+  }
+
   // POST /worker/job-workflow-steps/{id}/comments [cite: 23]
   Future<void> addComment(
     int stepId,

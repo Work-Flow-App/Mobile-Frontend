@@ -132,6 +132,71 @@ class StepDetailController extends StateNotifier<StepDetailState> {
     }
   }
 
+  Future<void> markOngoing() async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await ref.read(jobServiceProvider).markStepOngoing(state.jobData.step.id);
+
+      final updatedStep = JobStep(
+        id: state.jobData.step.id,
+        name: state.jobData.step.name,
+        description: state.jobData.step.description,
+        orderIndex: state.jobData.step.orderIndex,
+        // Update this to match your enum for ONGOING
+        status: StepStatus.ONGOING,
+        assignedWorkerIds: state.jobData.step.assignedWorkerIds,
+      );
+
+      final updatedJobData = JobData(
+        step: updatedStep,
+        jobId: state.jobData.jobId,
+        customer: state.jobData.customer,
+        assignedAssets: state.jobData.assignedAssets,
+        jobAddress: state.jobData.jobAddress,
+      );
+
+      state = state.copyWith(isLoading: false, jobData: updatedJobData);
+      refreshTimeline();
+      ref.refresh(assignedStepsFutureProvider);
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    }
+  }
+
+  Future<void> completeOngoing() async {
+    state = state.copyWith(isLoading: true);
+    try {
+      await ref
+          .read(jobServiceProvider)
+          .completeOngoingStep(state.jobData.step.id);
+
+      final updatedStep = JobStep(
+        id: state.jobData.step.id,
+        name: state.jobData.step.name,
+        description: state.jobData.step.description,
+        orderIndex: state.jobData.step.orderIndex,
+        status: StepStatus.COMPLETED,
+        assignedWorkerIds: state.jobData.step.assignedWorkerIds,
+      );
+
+      final updatedJobData = JobData(
+        step: updatedStep,
+        jobId: state.jobData.jobId,
+        customer: state.jobData.customer,
+        assignedAssets: state.jobData.assignedAssets,
+        jobAddress: state.jobData.jobAddress,
+      );
+
+      state = state.copyWith(isLoading: false, jobData: updatedJobData);
+      refreshTimeline();
+      ref.refresh(assignedStepsFutureProvider);
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    }
+  }
+
   Future<void> addComment(String text, StepDiscussionType type) async {
     if (text.trim().isEmpty) return;
     try {

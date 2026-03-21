@@ -206,6 +206,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               onPressed: null,
               label: CircularProgressIndicator(),
             )
+          // CASE 1: NOT STARTED
           else if (step.status == StepStatus.NOT_STARTED)
             FloatingActionButton.extended(
               heroTag: "start_step_btn",
@@ -232,6 +233,7 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               backgroundColor: Colors.blue.shade700,
               foregroundColor: Colors.white,
             )
+          // CASE 2: STARTED (Original complete flow)
           else if (step.status == StepStatus.STARTED)
             FloatingActionButton.extended(
               heroTag: "complete_step_btn",
@@ -258,7 +260,64 @@ class _StepDetailScreenState extends ConsumerState<StepDetailScreen> {
               label: const Text("Mark as Completed"),
               backgroundColor: Colors.green.shade700,
               foregroundColor: Colors.white,
+            )
+          // CASE 3: INITIATED (New mark ongoing flow)
+          else if (step.status == StepStatus.INITIATED)
+            FloatingActionButton.extended(
+              heroTag: "mark_ongoing_btn",
+              onPressed: () {
+                _showConfirmationDialog(
+                  context: context,
+                  title: "Mark as Ongoing",
+                  content:
+                      "Are you sure you want to mark this step as ongoing?",
+                  onConfirm: () async {
+                    try {
+                      await controller.markOngoing();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
+                );
+              },
+              icon: const Icon(Icons.sync),
+              label: const Text("Mark as Ongoing"),
+              backgroundColor: Colors.teal.shade700,
+              foregroundColor: Colors.white,
+            )
+          // CASE 4: ONGOING (New complete ongoing flow)
+          else if (step.status == StepStatus.ONGOING)
+            FloatingActionButton.extended(
+              heroTag: "complete_ongoing_btn",
+              onPressed: () {
+                _showConfirmationDialog(
+                  context: context,
+                  title: "Complete Ongoing Step",
+                  content:
+                      "Are you sure you want to complete this ongoing step?",
+                  onConfirm: () async {
+                    try {
+                      await controller.completeOngoing();
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                      }
+                    }
+                  },
+                );
+              },
+              icon: const Icon(Icons.check_circle),
+              label: const Text("Complete Ongoing Step"),
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
             ),
+
           const SizedBox(height: 16),
         ],
 
