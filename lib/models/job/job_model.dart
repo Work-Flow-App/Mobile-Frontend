@@ -98,7 +98,6 @@ class JobStep {
   bool isAssignedTo(int workerId) => assignedWorkerIds.contains(workerId);
 }
 
-
 // Job Address Model
 class JobAddress {
   final int id;
@@ -225,12 +224,20 @@ class Customer {
 class AssignedAsset {
   final int assignmentId;
   final int assetId;
+  final String? assetName;
+  final String? description;
+  final String? serialNumber;
+  final String? assetTag;
   final String? notes;
   final String status;
 
   AssignedAsset({
     required this.assignmentId,
     required this.assetId,
+    this.assetName,
+    this.description,
+    this.serialNumber,
+    this.assetTag,
     this.notes,
     required this.status,
   });
@@ -239,6 +246,10 @@ class AssignedAsset {
     return AssignedAsset(
       assignmentId: json['assignmentId'] ?? 0,
       assetId: json['assetId'] ?? 0,
+      assetName: json['assetName'],
+      description: json['description'],
+      serialNumber: json['serialNumber'],
+      assetTag: json['assetTag'],
       notes: json['notes'],
       status: json['status'] ?? 'UNKNOWN',
     );
