@@ -188,6 +188,7 @@ class StepInfoSection extends ConsumerWidget {
       children: [
         const _SectionTitle(title: "Service Location"),
         _ModernCard(
+          accentColor: Colors.red.shade400,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -250,6 +251,7 @@ class StepInfoSection extends ConsumerWidget {
       children: [
         const _SectionTitle(title: "Customer Details"),
         _ModernCard(
+          accentColor: Colors.blue.shade400,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -310,6 +312,7 @@ class StepInfoSection extends ConsumerWidget {
       itemBuilder: (context, index) {
         final asset = assets[index];
         return _ModernCard(
+          accentColor: Colors.orange.shade400,
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,7 +548,7 @@ class StepInfoSection extends ConsumerWidget {
 }
 
 // ============================================================================
-// Helper UI Components
+// Helper UI Components (Premium Edition)
 // ============================================================================
 
 class _SectionTitle extends StatelessWidget {
@@ -556,14 +559,28 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: Colors.grey.shade900,
-          letterSpacing: -0.5,
-          fontSize: 20,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.indigo.shade400,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: Colors.grey.shade900,
+              letterSpacing: -0.5,
+              fontSize: 20,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -585,11 +602,22 @@ class _IconBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.1)),
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [bgColor.withOpacity(0.8), bgColor],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.2), // Tinted shadow matching the icon
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: color.withOpacity(0.15), width: 1.5),
       ),
-      child: Icon(icon, color: color, size: 24),
+      child: Icon(icon, color: color, size: 22),
     );
   }
 }
@@ -597,35 +625,63 @@ class _IconBox extends StatelessWidget {
 class _ModernCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final Color? accentColor;
 
   const _ModernCard({
     required this.child,
     this.padding = const EdgeInsets.all(24),
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final shadowColor = accentColor ?? Colors.black;
+
     return Container(
-      padding: padding,
+      clipBehavior: Clip
+          .antiAlias, // Needed to keep the accent line inside the rounded corners
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100), // Adds crispness
+        border: Border.all(color: Colors.grey.shade100, width: 1.5),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white,
+            Colors.grey.shade50.withOpacity(
+              0.5,
+            ), // Very subtle off-white at the bottom
+          ],
+        ),
         boxShadow: [
-          // Softer, layered shadows for a modern look
+          // A softer, more spread out shadow tinted with the card's accent color
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 20,
+            color: shadowColor.withOpacity(0.04),
+            blurRadius: 24,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: shadowColor.withOpacity(0.02),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: child,
+      child: Stack(
+        children: [
+          // The Left-Edge Accent Strip
+          if (accentColor != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(width: 4, color: accentColor),
+            ),
+
+          // The Content
+          Padding(padding: padding, child: child),
+        ],
+      ),
     );
   }
 }
