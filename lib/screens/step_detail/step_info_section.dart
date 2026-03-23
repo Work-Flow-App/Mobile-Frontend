@@ -16,7 +16,7 @@ class StepInfoSection extends ConsumerWidget {
     required this.isLoading,
   });
 
-  // NEW: Helper method to launch maps
+  // Helper method to launch maps
   Future<void> _openMaps(BuildContext context, JobAddress address) async {
     final lat = address.latitude;
     final lng = address.longitude;
@@ -26,16 +26,12 @@ class StepInfoSection extends ConsumerWidget {
     Uri fallbackUrl;
 
     if (Platform.isIOS) {
-      // Apple Maps
       if (lat != null && lng != null) {
-        // Pin at lat/lng with the address as the label
         nativeUrl = Uri.parse('https://maps.apple.com/?ll=$lat,$lng&q=$query');
       } else {
-        // Search by address string
         nativeUrl = Uri.parse('https://maps.apple.com/?q=$query');
       }
     } else {
-      // Google Maps Android Intent
       if (lat != null && lng != null) {
         nativeUrl = Uri.parse('geo:$lat,$lng?q=$lat,$lng($query)');
       } else {
@@ -43,7 +39,6 @@ class StepInfoSection extends ConsumerWidget {
       }
     }
 
-    // Universal fallback URL (opens in browser or app)
     fallbackUrl = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=${lat != null && lng != null ? "$lat,$lng" : query}',
     );
@@ -77,9 +72,7 @@ class StepInfoSection extends ConsumerWidget {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 850,
-        ), // Slightly wider for grid
+        constraints: const BoxConstraints(maxWidth: 850),
         child: AnimatedOpacity(
           opacity: isLoading ? 0.6 : 1.0,
           duration: const Duration(milliseconds: 300),
@@ -88,20 +81,23 @@ class StepInfoSection extends ConsumerWidget {
               horizontal: 24.0,
               vertical: 32.0,
             ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Determine if screen is wide enough for a 2-column layout
-                final isWideScreen = constraints.maxWidth > 600;
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context, step),
+                const SizedBox(height: 32),
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(context, step),
-                    const SizedBox(height: 40),
-
-                    if (step.description.isNotEmpty) ...[
-                      const _SectionTitle(title: "Task Details"),
-                      Text(
+                // --- ACCORDION SECTIONS ---
+                if (step.description.isNotEmpty)
+                  _ModernAccordion(
+                    title: "Task Details",
+                    icon: Icons.description_outlined,
+                    accentColor: Colors.indigo.shade400,
+                    bgColor: Colors.indigo.shade50,
+                    initiallyExpanded: true,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
                         step.description,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           height: 1.6,
@@ -109,45 +105,41 @@ class StepInfoSection extends ConsumerWidget {
                           fontSize: 16,
                         ),
                       ),
-                      const SizedBox(height: 40),
-                    ],
+                    ),
+                  ),
 
-                    // --- RESPONSIVE GRID FOR LOCATION & CUSTOMER ---
-                    if (isWideScreen)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (jobAddress != null)
-                            Expanded(
-                              child: _buildLocationCard(context, jobAddress),
-                            ),
-                          if (jobAddress != null && customer != null)
-                            const SizedBox(width: 24),
-                          if (customer != null)
-                            Expanded(child: _buildCustomerCard(customer)),
-                        ],
-                      )
-                    else ...[
-                      if (jobAddress != null)
-                        _buildLocationCard(context, jobAddress),
-                      if (jobAddress != null && customer != null)
-                        const SizedBox(height: 32),
-                      if (customer != null) _buildCustomerCard(customer),
-                    ],
+                if (jobAddress != null)
+                  _ModernAccordion(
+                    title: "Service Location",
+                    icon: Icons.location_on_rounded,
+                    accentColor: Colors.red.shade400,
+                    bgColor: Colors.red.shade50,
+                    initiallyExpanded: true,
+                    child: _buildLocationContent(context, jobAddress),
+                  ),
 
-                    const SizedBox(height: 40),
+                if (customer != null)
+                  _ModernAccordion(
+                    title: "Customer Details",
+                    icon: Icons.person_rounded,
+                    accentColor: Colors.blue.shade400,
+                    bgColor: Colors.blue.shade50,
+                    child: _buildCustomerContent(customer),
+                  ),
 
-                    if (jobData.assignedAssets.isNotEmpty) ...[
-                      const _SectionTitle(title: "Assigned Assets"),
-                      _buildAssetsList(jobData.assignedAssets),
-                      const SizedBox(height: 40),
-                    ],
+                if (jobData.assignedAssets.isNotEmpty)
+                  _ModernAccordion(
+                    title: "Assigned Assets",
+                    icon: Icons.inventory_2_rounded,
+                    accentColor: Colors.orange.shade400,
+                    bgColor: Colors.orange.shade50,
+                    child: _buildAssetsList(jobData.assignedAssets),
+                  ),
 
-                    if (!canEdit) _buildReadOnlyBadge(),
-                    const SizedBox(height: 40),
-                  ],
-                );
-              },
+                const SizedBox(height: 24),
+                if (!canEdit) _buildReadOnlyBadge(),
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -204,14 +196,10 @@ class StepInfoSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color:
-            step.status.backgroundColor ??
-            Colors.blue.shade50, // Added fallback
+        color: step.status.backgroundColor ?? Colors.blue.shade50,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: (step.status.color ?? Colors.blue).withOpacity(
-            0.2,
-          ), // Added fallback
+          color: (step.status.color ?? Colors.blue).withOpacity(0.2),
         ),
       ),
       child: Row(
@@ -222,14 +210,14 @@ class StepInfoSection extends ConsumerWidget {
             height: 8,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: step.status.color ?? Colors.blue, // Added fallback
+              color: step.status.color ?? Colors.blue,
             ),
           ),
           const SizedBox(width: 8),
           Text(
             step.status.label.toUpperCase(),
             style: TextStyle(
-              color: step.status.color ?? Colors.blue, // Added fallback
+              color: step.status.color ?? Colors.blue,
               fontWeight: FontWeight.bold,
               fontSize: 12,
               letterSpacing: 0.5,
@@ -240,144 +228,85 @@ class StepInfoSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildLocationCard(BuildContext context, JobAddress jobAddress) {
+  Widget _buildLocationContent(BuildContext context, JobAddress jobAddress) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(title: "Service Location"),
-        _ModernCard(
-          accentColor: Colors.red.shade400,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _IconBox(
-                    icon: Icons.location_on_rounded,
-                    color: Colors.red.shade600,
-                    bgColor: Colors.red.shade50,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: SelectableText(
-                      jobAddress.fullAddress,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        height: 1.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // NEW: Get Directions Action Button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _openMaps(context, jobAddress),
-                  icon: const Icon(Icons.directions_outlined),
-                  label: const Text("Get Directions"),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red.shade50,
-                    foregroundColor: Colors.red.shade700,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-
-              if (jobAddress.additionalInfo?.isNotEmpty == true) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider(height: 1),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 20,
-                      color: Colors.grey.shade400,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        jobAddress.additionalInfo!,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
+        SelectableText(
+          jobAddress.fullAddress,
+          style: const TextStyle(
+            fontSize: 16,
+            height: 1.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => _openMaps(context, jobAddress),
+            icon: const Icon(Icons.directions_outlined),
+            label: const Text("Get Directions"),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade50,
+              foregroundColor: Colors.red.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+        if (jobAddress.additionalInfo?.isNotEmpty == true) ...[
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Divider(height: 1),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.info_outline_rounded,
+                size: 20,
+                color: Colors.grey.shade400,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  jobAddress.additionalInfo!,
+                  style: TextStyle(color: Colors.grey.shade700, height: 1.5),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildCustomerCard(Customer customer) {
+  Widget _buildCustomerContent(Customer customer) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle(title: "Customer Details"),
-        _ModernCard(
-          accentColor: Colors.blue.shade400,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _IconBox(
-                    icon: Icons.person_rounded,
-                    color: Colors.blue.shade600,
-                    bgColor: Colors.blue.shade50,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: SelectableText(
-                      customer.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Divider(height: 1),
-              ),
-              _buildContactRow(
-                Icons.phone_rounded,
-                customer.telephone.isNotEmpty
-                    ? customer.telephone
-                    : customer.mobile,
-                isSelectable: true,
-              ),
-              if (customer.email.isNotEmpty)
-                _buildContactRow(
-                  Icons.email_rounded,
-                  customer.email,
-                  isSelectable: true,
-                ),
-              if (customer.address.fullAddress.isNotEmpty)
-                _buildContactRow(
-                  Icons.map_rounded,
-                  customer.address.fullAddress,
-                ),
-            ],
-          ),
+        SelectableText(
+          customer.name,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        const SizedBox(height: 16),
+        _buildContactRow(
+          Icons.phone_rounded,
+          customer.telephone.isNotEmpty ? customer.telephone : customer.mobile,
+          isSelectable: true,
+        ),
+        if (customer.email.isNotEmpty)
+          _buildContactRow(
+            Icons.email_rounded,
+            customer.email,
+            isSelectable: true,
+          ),
+        if (customer.address.fullAddress.isNotEmpty)
+          _buildContactRow(Icons.map_rounded, customer.address.fullAddress),
       ],
     );
   }
@@ -387,24 +316,22 @@ class StepInfoSection extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: assets.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final asset = assets[index];
-        return _ModernCard(
-          accentColor: Colors.orange.shade400,
-          padding: const EdgeInsets.all(20),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.orange.shade100),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _IconBox(
-                    icon: Icons.inventory_2_rounded,
-                    color: Colors.orange.shade600,
-                    bgColor: Colors.orange.shade50,
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,13 +374,13 @@ class StepInfoSection extends ConsumerWidget {
                 ],
               ),
               if (asset.description?.isNotEmpty == true) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Text(
                   asset.description!,
                   style: TextStyle(color: Colors.grey.shade800, height: 1.5),
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -466,37 +393,29 @@ class StepInfoSection extends ConsumerWidget {
               ),
               if (asset.notes?.isNotEmpty == true) ...[
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: 12),
                   child: Divider(height: 1),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade100),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.notes_rounded,
-                        size: 18,
-                        color: Colors.amber.shade700,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          asset.notes!,
-                          style: TextStyle(
-                            color: Colors.grey.shade800,
-                            fontStyle: FontStyle.italic,
-                            height: 1.5,
-                          ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.notes_rounded,
+                      size: 18,
+                      color: Colors.amber.shade700,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        asset.notes!,
+                        style: TextStyle(
+                          color: Colors.grey.shade800,
+                          fontStyle: FontStyle.italic,
+                          height: 1.5,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ],
@@ -547,9 +466,9 @@ class StepInfoSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -627,36 +546,99 @@ class StepInfoSection extends ConsumerWidget {
 }
 
 // ============================================================================
-// Helper UI Components (Premium Edition)
+// Helper UI Components (Accordion Edition)
 // ============================================================================
 
-class _SectionTitle extends StatelessWidget {
+class _ModernAccordion extends StatelessWidget {
   final String title;
-  const _SectionTitle({required this.title});
+  final IconData icon;
+  final Color accentColor;
+  final Color bgColor;
+  final Widget child;
+  final bool initiallyExpanded;
+
+  const _ModernAccordion({
+    required this.title,
+    required this.icon,
+    required this.accentColor,
+    required this.bgColor,
+    required this.child,
+    this.initiallyExpanded = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              color: Colors.indigo.shade400,
-              borderRadius: BorderRadius.circular(4),
-            ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200, width: 1.5),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withOpacity(0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: Colors.grey.shade900,
-              letterSpacing: -0.5,
-              fontSize: 20,
+          BoxShadow(
+            color: accentColor.withOpacity(0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Left-Edge Accent Strip
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(width: 4, color: accentColor),
+          ),
+
+          Theme(
+            data: Theme.of(context).copyWith(
+              dividerColor:
+                  Colors.transparent, // Removes internal ExpansionTile borders
+              splashColor: bgColor.withOpacity(0.5),
+              highlightColor: bgColor.withOpacity(0.3),
+            ),
+            child: ExpansionTile(
+              initiallyExpanded: initiallyExpanded,
+              iconColor: accentColor,
+              collapsedIconColor: Colors.grey.shade400,
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 8,
+              ),
+              childrenPadding: const EdgeInsets.only(
+                left: 24,
+                right: 24,
+                bottom: 24,
+              ),
+              leading: _IconBox(
+                icon: icon,
+                color: accentColor,
+                bgColor: bgColor,
+              ),
+              title: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.grey.shade900,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 20.0),
+                  child: Divider(height: 1),
+                ),
+                child,
+              ],
             ),
           ),
         ],
@@ -679,7 +661,7 @@ class _IconBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -689,78 +671,14 @@ class _IconBox extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2), // Tinted shadow matching the icon
+            color: color.withOpacity(0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
         border: Border.all(color: color.withOpacity(0.15), width: 1.5),
       ),
-      child: Icon(icon, color: color, size: 22),
-    );
-  }
-}
-
-class _ModernCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final Color? accentColor;
-
-  const _ModernCard({
-    required this.child,
-    this.padding = const EdgeInsets.all(24),
-    this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final shadowColor = accentColor ?? Colors.black;
-
-    return Container(
-      clipBehavior: Clip
-          .antiAlias, // Needed to keep the accent line inside the rounded corners
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100, width: 1.5),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.white,
-            Colors.grey.shade50.withOpacity(
-              0.5,
-            ), // Very subtle off-white at the bottom
-          ],
-        ),
-        boxShadow: [
-          // A softer, more spread out shadow tinted with the card's accent color
-          BoxShadow(
-            color: shadowColor.withOpacity(0.04),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-          BoxShadow(
-            color: shadowColor.withOpacity(0.02),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // The Left-Edge Accent Strip
-          if (accentColor != null)
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(width: 4, color: accentColor),
-            ),
-
-          // The Content
-          Padding(padding: padding, child: child),
-        ],
-      ),
+      child: Icon(icon, color: color, size: 20),
     );
   }
 }
