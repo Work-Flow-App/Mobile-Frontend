@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jwt_decoder/jwt_decoder.dart'; // Import this to decode the new token
 import 'package:mobile_frontend/services/storage/storage_service.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
+import 'package:mobile_frontend/config/env.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: 'https://api.dev2.workfloow.app/api/v1',
+      baseUrl: Env.baseUrl
+      /* baseUrl: 'https://api.dev2.workfloow.app/api/v1' */,
       /* baseUrl: 'http://10.0.2.2:8080/api/v1', */
       /*  baseUrl: 'http://10.86.247.227:8080/api/v1', */
       connectTimeout: const Duration(seconds: 10),
