@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class StepInfoSection extends ConsumerWidget {
   final JobData jobData;
@@ -13,6 +15,59 @@ class StepInfoSection extends ConsumerWidget {
     required this.canEdit,
     required this.isLoading,
   });
+
+  // NEW: Helper method to launch maps
+  Future<void> _openMaps(BuildContext context, JobAddress address) async {
+    final lat = address.latitude;
+    final lng = address.longitude;
+    final query = Uri.encodeComponent(address.fullAddress);
+
+    Uri nativeUrl;
+    Uri fallbackUrl;
+
+    if (Platform.isIOS) {
+      // Apple Maps
+      if (lat != null && lng != null) {
+        // Pin at lat/lng with the address as the label
+        nativeUrl = Uri.parse('https://maps.apple.com/?ll=$lat,$lng&q=$query');
+      } else {
+        // Search by address string
+        nativeUrl = Uri.parse('https://maps.apple.com/?q=$query');
+      }
+    } else {
+      // Google Maps Android Intent
+      if (lat != null && lng != null) {
+        nativeUrl = Uri.parse('geo:$lat,$lng?q=$lat,$lng($query)');
+      } else {
+        nativeUrl = Uri.parse('geo:0,0?q=$query');
+      }
+    }
+
+    // Universal fallback URL (opens in browser or app)
+    fallbackUrl = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=${lat != null && lng != null ? "$lat,$lng" : query}',
+    );
+
+    try {
+      if (await canLaunchUrl(nativeUrl)) {
+        await launchUrl(nativeUrl, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(fallbackUrl)) {
+        await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Could not open maps application.")),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error opening map: $e")));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -63,7 +118,9 @@ class StepInfoSection extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (jobAddress != null)
-                            Expanded(child: _buildLocationCard(jobAddress)),
+                            Expanded(
+                              child: _buildLocationCard(context, jobAddress),
+                            ),
                           if (jobAddress != null && customer != null)
                             const SizedBox(width: 24),
                           if (customer != null)
@@ -71,7 +128,8 @@ class StepInfoSection extends ConsumerWidget {
                         ],
                       )
                     else ...[
-                      if (jobAddress != null) _buildLocationCard(jobAddress),
+                      if (jobAddress != null)
+                        _buildLocationCard(context, jobAddress),
                       if (jobAddress != null && customer != null)
                         const SizedBox(height: 32),
                       if (customer != null) _buildCustomerCard(customer),
@@ -182,7 +240,7 @@ class StepInfoSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildLocationCard(JobAddress jobAddress) {
+  Widget _buildLocationCard(BuildContext context, JobAddress jobAddress) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -212,6 +270,27 @@ class StepInfoSection extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
+
+              // NEW: Get Directions Action Button
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => _openMaps(context, jobAddress),
+                  icon: const Icon(Icons.directions_outlined),
+                  label: const Text("Get Directions"),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.red.shade50,
+                    foregroundColor: Colors.red.shade700,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+
               if (jobAddress.additionalInfo?.isNotEmpty == true) ...[
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
