@@ -5,80 +5,214 @@ import 'package:mobile_frontend/providers/job/job_provider.dart';
 import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
 import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:ui';
 import 'assigned_step_list_view.dart';
 import 'package:go_router/go_router.dart';
 
 class HomeDashboard extends ConsumerWidget {
   const HomeDashboard({super.key});
+
   void _showMenuBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Important for landscape
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      clipBehavior: Clip.antiAliasWithSaveLayer,
+      isScrollControlled: true,
+      backgroundColor: Colors
+          .transparent, // Transparent so our container handles the rounded corners
       builder: (context) {
-        return SafeArea(
-          child: DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.4,
-            minChildSize: 0.3,
-            maxChildSize: 0.8,
-            builder: (context, scrollController) {
-              return ListView(
-                controller: scrollController,
-                padding: EdgeInsets.zero,
-                children: [
-                  UserAccountsDrawerHeader(
-                    margin: EdgeInsets.zero,
-                    decoration: const BoxDecoration(color: Colors.black),
-                    accountName: Text(isAdmin ? "Admin User" : "Worker User"),
-                    accountEmail: const Text("user@example.com"),
-                    currentAccountPicture: CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: Text(
-                        isAdmin ? "A" : "W",
-                        style: const TextStyle(
-                          fontSize: 24,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize:
+              0.45, // Slightly larger initial size to fit the new layout
+          minChildSize: 0.3,
+          maxChildSize: 0.85,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    spreadRadius: 2,
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.task_alt),
-                    title: const Text('My Tasks'),
-                    selected: true,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.analytics_outlined),
-                    title: const Text('Task Overview'),
-                    onTap: () {
-                      Navigator.pop(context); // Close bottom sheet
-                      context.push('/task-stats'); // Navigate to the stats page
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      ref.read(authNotifierProvider.notifier).logout();
-                    },
-                  ),
-                  const SizedBox(height: 16),
                 ],
-              );
-            },
-          ),
+              ),
+              child: CustomScrollView(
+                controller: scrollController,
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // 1. Modern Drag Handle
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 4,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // 2. Brand Logo (SVG)
+                        SvgPicture.asset(
+                          'assets/images/logo_text_black.svg', // Ensure this path matches your pubspec.yaml
+                          height: 28, // Adjust size as needed
+                        ),
+                        const SizedBox(height: 32),
+
+                        // 3. User Profile Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor: Colors.black.withOpacity(0.05),
+                                child: Text(
+                                  isAdmin ? "A" : "U",
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isAdmin ? "Administrator" : "Username",
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "user@example.com",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.black12,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+
+                  // 4. Menu Items
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        _buildMenuItem(
+                          context: context,
+                          icon: Icons.task_alt,
+                          title: 'My Tasks',
+                          isSelected: true,
+                          onTap: () => Navigator.pop(context),
+                        ),
+                        _buildMenuItem(
+                          context: context,
+                          icon: Icons.analytics_outlined,
+                          title: 'Task Overview',
+                          isSelected: false,
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.push('/task-stats');
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: Colors.black12,
+                        ),
+                        const SizedBox(height: 16),
+                        _buildMenuItem(
+                          context: context,
+                          icon: Icons.logout_rounded,
+                          title: 'Logout',
+                          isSelected: false,
+                          isDestructive: true,
+                          onTap: () {
+                            Navigator.pop(context);
+                            ref.read(authNotifierProvider.notifier).logout();
+                          },
+                        ),
+                        const SizedBox(height: 32), // Safe bottom padding
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  // Helper widget for modern menu items
+  Widget _buildMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isSelected = false,
+    bool isDestructive = false,
+  }) {
+    // Define colors based on item state
+    final contentColor = isDestructive
+        ? Colors.red.shade700
+        : (isSelected ? Colors.black : Colors.grey.shade800);
+
+    final backgroundColor = isSelected
+        ? Colors.black.withOpacity(0.05)
+        : (isDestructive ? Colors.red.withOpacity(0.05) : Colors.transparent);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+        leading: Icon(icon, color: contentColor, size: 26),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: contentColor,
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+        onTap: onTap,
+      ),
     );
   }
 
