@@ -7,6 +7,7 @@ import 'package:mobile_frontend/widgets/filter_bar.dart';
 import 'package:mobile_frontend/widgets/app_branding.dart';
 import 'dart:ui';
 import 'assigned_step_list_view.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeDashboard extends ConsumerWidget {
   const HomeDashboard({super.key});
@@ -53,6 +54,14 @@ class HomeDashboard extends ConsumerWidget {
                     onTap: () => Navigator.pop(context),
                   ),
                   ListTile(
+                    leading: const Icon(Icons.analytics_outlined),
+                    title: const Text('Task Overview'),
+                    onTap: () {
+                      Navigator.pop(context); // Close bottom sheet
+                      context.push('/task-stats'); // Navigate to the stats page
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text(
                       'Logout',
@@ -90,7 +99,7 @@ class HomeDashboard extends ConsumerWidget {
         backgroundColor: Colors.black, // Match your app branding
         foregroundColor: Colors.white,
         elevation: 4,
-        child: const Icon(Icons.menu, size: 20), 
+        child: const Icon(Icons.menu, size: 20),
       ),
 
       body: stepsAsync.when(
@@ -189,8 +198,7 @@ class TabletSplitView extends ConsumerWidget {
       final selectedJobData = allSteps.firstWhere(
         (s) => s.step.id == selectedStepId,
       );
-      detailView = StepDetailScreen(jobData: selectedJobData,
-      isEmbedded: true,);
+      detailView = StepDetailScreen(jobData: selectedJobData, isEmbedded: true);
     }
 
     return Row(
