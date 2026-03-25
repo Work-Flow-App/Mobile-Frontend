@@ -238,7 +238,18 @@ class HomeDashboard extends ConsumerWidget {
 
       body: stepsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        error: (_, __) => RefreshIndicator(
+          onRefresh: () async =>
+              ref.refresh(assignedStepsFutureProvider.future),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverFillRemaining(
+                child: const Center(child: Text("No steps found")),
+              ),
+            ],
+          ),
+        ),
         data: (allSteps) {
           // Wrap your layout builder in a NestedScrollView
           return NestedScrollView(

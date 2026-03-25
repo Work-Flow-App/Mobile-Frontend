@@ -3,21 +3,25 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/services/auth/auth_service.dart';
 import 'package:mobile_frontend/services/storage/storage_service.dart';
+import 'package:mobile_frontend/providers/job/job_provider.dart';
 
 // Explicit type definition to prevent circularity error
 final StateNotifierProvider<AuthNotifier, AuthState> authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) {
       return AuthNotifier(
+        ref,
         ref.read(authServiceProvider),
         ref.read(storageServiceProvider),
       );
     });
 
 class AuthNotifier extends StateNotifier<AuthState> {
+  final Ref ref;
   final AuthService _authService;
   final StorageService _storage;
 
-  AuthNotifier(this._authService, this._storage) : super(const AuthState()) {
+  AuthNotifier(this.ref, this._authService, this._storage)
+    : super(const AuthState()) {
     checkAuthStatus();
   }
 
@@ -63,6 +67,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         role: normalizedRole,
       );
 
+      _clearJobCache();
+
       // 5. Update UI State
       state = state.copyWith(
         status: AuthStatus.authenticated,
@@ -92,6 +98,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         role: role,
       );
 
+      _clearJobCache();
+
       state = state.copyWith(status: AuthStatus.authenticated, role: role);
     } catch (e) {
       state = state.copyWith(
@@ -103,6 +111,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await _storage.clearAll();
+
+    _clearJobCache();
+
     state = state.copyWith(status: AuthStatus.unauthenticated, role: null);
+  }
+
+  void _clearJobCache() {
+    ref.invalidate(assignedStepsFutureProvider);
+    ref.invalidate(stepTimelineProvider);
+    ref.invalidate(stepWorkLogsProvider);
+    ref.invalidate(filteredStepsProvider);
+    ref.invalidate(selectedStepIdProvider);
   }
 }
