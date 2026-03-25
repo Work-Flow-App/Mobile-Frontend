@@ -8,7 +8,7 @@ import 'package:mobile_frontend/screens/auth/login_screen.dart';
 import 'package:mobile_frontend/screens/auth/signup_screen.dart';
 import 'package:mobile_frontend/screens/dashboard/home_dashboard.dart';
 import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
-// import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart'; // Uncomment if you add route for this
+import 'package:mobile_frontend/screens/dashboard/task_stats_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   // 1. Watch Auth State for changes (Login, Logout, Role change)
@@ -71,6 +71,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/dashboard',
         name: 'dashboard',
         builder: (context, state) => const HomeDashboard(),
+      ),
+
+      GoRoute(
+        path: '/task-stats',
+        name: 'task-stats',
+        builder: (context, state) => const TaskStatsScreen(),
       ),
 
       // --- ADDED THIS ROUTE ---
