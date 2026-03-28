@@ -1,23 +1,28 @@
-flutter_launcher_icons:
-  image_path: 'assets/images/logo.png'
+# ==========================================
+# HOW TO RUN THE ICON GENERATOR:
+# ==========================================
+# 1. Make sure you have saved this file.
+# 2. Open your terminal at the root of your project.
+# 3. Run: flutter pub get
+# 4. Run: dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
+# ==========================================
 
-  android: 'launcher_icon'
+flutter_launcher_icons:
+  # The default image used for iOS and fallback for older Android versions
+  image_path: 'assets/images/icon.png'
+
+  # --- Android Configuration ---
+  android: true # You can also use a string like 'launcher_icon' to name the file
   min_sdk_android: 21
 
+  # Adaptive icons (For Android 8.0 / API 26 and above)
+  # The background can be a solid hex color (e.g., '#ffffff') or an image path (e.g., 'assets/images/bg.png')
+  adaptive_icon_background: '#ffffff'
+
+  # The foreground should ideally be a transparent PNG containing just your logo
+  adaptive_icon_foreground: 'assets/images/icon.png'
+
+  # --- iOS Configuration ---
   ios: true
+  # iOS does not allow transparent backgrounds for app icons. This removes the alpha channel.
   remove_alpha_ios: true
-
-  web:
-    generate: true
-    image_path: 'assets/images/logo.png'
-    background_color: '#ffffff'
-    theme_color: '#ffffff'
-
-  windows:
-    generate: true
-    image_path: 'assets/images/logo.png'
-    icon_size: 48
-
-  macos:
-    generate: true
-    image_path: 'assets/images/logo.png'
