@@ -260,6 +260,7 @@ class AssignedAsset {
 class JobData {
   final JobStep step;
   final int jobId;
+  final int? jobRef;
   final Customer? customer;
   final List<AssignedAsset> assignedAssets;
   final JobAddress? jobAddress; // NEW: Added jobAddress field
@@ -267,6 +268,7 @@ class JobData {
   JobData({
     required this.step,
     required this.jobId,
+    this.jobRef,
     this.customer,
     required this.assignedAssets,
     this.jobAddress, // NEW
@@ -276,6 +278,7 @@ class JobData {
     return JobData(
       step: JobStep.fromJson(json['step'] ?? {}),
       jobId: json['jobId'] ?? 0,
+      jobRef: json['jobRef'] ?? 0,
       customer: json['customer'] != null
           ? Customer.fromJson(json['customer'])
           : null,

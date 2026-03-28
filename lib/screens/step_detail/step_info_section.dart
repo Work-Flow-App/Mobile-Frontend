@@ -166,7 +166,7 @@ class StepInfoSection extends ConsumerWidget {
                 border: Border.all(color: Colors.indigo.shade100),
               ),
               child: Text(
-                "JOB #${jobData.jobId}  •  STEP #${step.orderIndex}",
+                "JOB #${jobData.jobRef}  •  STEP #${step.orderIndex}",
                 style: TextStyle(
                   color: Colors.indigo.shade700,
                   fontWeight: FontWeight.w700,

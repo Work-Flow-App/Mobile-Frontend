@@ -121,7 +121,7 @@ class StepCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              "JOB #${jobData.jobId} • STEP #${step.orderIndex}",
+                              "JOB #${jobData.jobRef} • STEP #${step.orderIndex}",
                               style: TextStyle(
                                 color: Colors.grey.shade700,
                                 fontWeight: FontWeight.w700,
