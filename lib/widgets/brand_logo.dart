@@ -10,7 +10,7 @@ class BrandLogo extends StatelessWidget {
   const BrandLogo({
     super.key,
     this.iconSize = 24,
-    this.textSvgWidth = 80, // Default width for the logo_text.svg
+    this.textSvgWidth = 80, // Default width for the WorkFloow_text.svg
     this.isAppBar = true,
     this.axis = Axis.horizontal, // Use Axis.vertical to stack them
   });
@@ -28,7 +28,7 @@ class BrandLogo extends StatelessWidget {
         width: axis == Axis.horizontal ? 10 : 0,
         height: axis == Axis.vertical ? 12 : 0,
       ),
-      SvgPicture.asset('assets/images/logo_text.svg', width: textSvgWidth),
+      SvgPicture.asset('assets/images/WorkFloow_text.svg', width: textSvgWidth),
     ];
 
     // Arrange children based on the provided Axis

@@ -62,7 +62,7 @@ class HomeDashboard extends ConsumerWidget {
 
                         // 2. Brand Logo (SVG)
                         SvgPicture.asset(
-                          'assets/images/logo_text_black.svg', // Ensure this path matches your pubspec.yaml
+                          'assets/images/WorkFloow_text.svg', // Ensure this path matches your pubspec.yaml
                           height: 28, // Adjust size as needed
                         ),
                         const SizedBox(height: 32),
