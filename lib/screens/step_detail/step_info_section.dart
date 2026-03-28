@@ -20,28 +20,45 @@ class StepInfoSection extends ConsumerWidget {
   Future<void> _openMaps(BuildContext context, JobAddress address) async {
     final lat = address.latitude;
     final lng = address.longitude;
-    final query = Uri.encodeComponent(address.fullAddress);
+    final hasAddress = address.fullAddress.trim().isNotEmpty;
+    final query = Uri.encodeComponent(address.fullAddress.trim());
 
     Uri nativeUrl;
     Uri fallbackUrl;
 
-    if (Platform.isIOS) {
-      if (lat != null && lng != null) {
-        nativeUrl = Uri.parse('https://maps.apple.com/?ll=$lat,$lng&q=$query');
-      } else {
+    if (hasAddress) {
+      // 1. Address is present: prioritize routing via address string
+      if (Platform.isIOS) {
         nativeUrl = Uri.parse('https://maps.apple.com/?q=$query');
-      }
-    } else {
-      if (lat != null && lng != null) {
-        nativeUrl = Uri.parse('geo:$lat,$lng?q=$lat,$lng($query)');
       } else {
         nativeUrl = Uri.parse('geo:0,0?q=$query');
       }
+      fallbackUrl = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$query',
+      );
+    } else if (lat != null && lng != null) {
+      // 2. Address is missing, but coordinates exist: route via lat/lng
+      if (Platform.isIOS) {
+        nativeUrl = Uri.parse(
+          'https://maps.apple.com/?ll=$lat,$lng&q=$lat,$lng',
+        );
+      } else {
+        nativeUrl = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+      }
+      fallbackUrl = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+      );
+    } else {
+      // 3. Neither address nor coordinates are available
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No location data available to open maps."),
+          ),
+        );
+      }
+      return;
     }
-
-    fallbackUrl = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=${lat != null && lng != null ? "$lat,$lng" : query}',
-    );
 
     try {
       if (await canLaunchUrl(nativeUrl)) {
