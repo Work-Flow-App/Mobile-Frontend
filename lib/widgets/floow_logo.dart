@@ -27,7 +27,7 @@ class FloowLogo extends StatelessWidget {
       children: [
         // 3. Use SvgPicture.asset instead of Image.asset
         SvgPicture.asset(
-          'assets/images/logo.svg', // Ensure this path matches your assets folder
+          'assets/images/logo_green.svg', // Ensure this path matches your assets folder
           height: iconSize,
           width: iconSize,
         ),

@@ -38,7 +38,7 @@ class AppBranding extends StatelessWidget {
         ],
         // The Logo follows the text */
         SvgPicture.asset(
-          'assets/images/logo.svg',
+          'assets/images/logo_green.svg',
           height: size,
           width: size,
           // If your SVG is black/single color and you want to tint it:

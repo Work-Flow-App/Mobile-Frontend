@@ -19,7 +19,7 @@ class BrandLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final children = [
       SvgPicture.asset(
-        'assets/images/logo.svg',
+        'assets/images/logo_green.svg',
         height: iconSize,
         width: iconSize,
       ),
