@@ -36,10 +36,31 @@ final filteredStepsProvider = Provider<List<JobData>>((ref) {
   final filter = ref.watch(stepStatusFilterProvider);
 
   return stepsAsync.when(
-    // Filter by looking at the nested .step.status
-    data: (jobDataList) => filter == null
-        ? jobDataList
-        : jobDataList.where((jd) => jd.step.status == filter).toList(),
+    data: (jobDataList) {
+      // 1. Filter the list first
+      List<JobData> processedList = filter == null
+          ? List<JobData>.from(jobDataList) // Create a copy so we can sort it
+          : jobDataList.where((jd) => jd.step.status == filter).toList();
+
+      // 2. Sort the list: jobRef Descending, then orderIndex Ascending
+      processedList.sort((a, b) {
+        // Handle null jobRefs gracefully (defaulting to 0 for comparison)
+        final aRef = a.jobRef ?? 0;
+        final bRef = b.jobRef ?? 0;
+
+        // Compare jobRef Descending (b compared to a)
+        int refComparison = bRef.compareTo(aRef);
+
+        if (refComparison != 0) {
+          return refComparison;
+        }
+
+        // If jobRefs are equal, compare orderIndex Ascending (a compared to b)
+        return a.step.orderIndex.compareTo(b.step.orderIndex);
+      });
+
+      return processedList;
+    },
     loading: () => [],
     error: (_, __) => [],
   );
