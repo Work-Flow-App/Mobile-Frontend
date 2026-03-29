@@ -1,8 +1,22 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val dartDefines = project.findProperty("dart-defines") as String?
+
+val decodedDefines = mutableMapOf<String, String>()
+
+dartDefines?.split(",")?.forEach {
+    val decoded = String(Base64.getDecoder().decode(it))
+    val parts = decoded.split("=")
+    if (parts.size == 2) {
+        decodedDefines[parts[0]] = parts[1]
+    }
 }
 
 android {
@@ -28,6 +42,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] =
+        decodedDefines["GOOGLE_MAPS_API_KEY"] ?: ""
     }
 
     buildTypes {
