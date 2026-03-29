@@ -10,16 +10,28 @@ class StatusMultiFilter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilters = ref.watch(mapStatusFilterProvider);
 
+    // Define your exact desired display order here
+    final List<StepStatus> displayOrder = [
+      StepStatus.ONGOING,
+      StepStatus.STARTED,
+      StepStatus.INITIATED,
+      StepStatus.NOT_STARTED,
+      // The remaining statuses follow:
+      StepStatus.PENDING,
+      StepStatus.COMPLETED,
+      StepStatus.SKIPPED,
+    ];
+
     return Container(
       height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          // "All" chip is active when the set is empty
+          // "All" chip is always first and is active when the set is empty
           _buildFilterChip(context, ref, "All", activeFilters.isEmpty),
 
-          // Map out the rest of the statuses
-          ...StepStatus.values.map((status) {
+          // Map out the statuses using your custom order
+          ...displayOrder.map((status) {
             return _buildEnumChip(context, ref, status, activeFilters);
           }),
         ],

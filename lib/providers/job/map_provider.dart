@@ -1,12 +1,54 @@
+import 'dart:io' show Platform; // NEW: Required for Platform check
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geocoding/geocoding.dart' as geo;
+import 'package:url_launcher/url_launcher.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 
 // 1. Manages a Set of statuses for multi-selection. If empty, all are shown.
 final mapStatusFilterProvider = StateProvider<Set<StepStatus>>((ref) => {});
+
+// --- UPDATED: Platform-aware directions launcher ---
+Future<void> _launchDirections(
+  double lat,
+  double lng,
+  String? addressInfo,
+) async {
+  Uri nativeUrl;
+
+  // A more reliable fallback URL for Google Maps in the browser
+  Uri fallbackUrl = Uri.parse(
+    'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+  );
+
+  // If we have an address string, we can pass it as the query for better routing
+  final query = addressInfo != null && addressInfo.isNotEmpty
+      ? Uri.encodeComponent(addressInfo)
+      : '$lat,$lng';
+
+  if (Platform.isIOS) {
+    // Launch Apple Maps natively
+    nativeUrl = Uri.parse('https://maps.apple.com/?ll=$lat,$lng&q=$query');
+  } else {
+    // Launch default Android map app (usually Google Maps)
+    nativeUrl = Uri.parse('geo:$lat,$lng?q=$query');
+  }
+
+  try {
+    if (await canLaunchUrl(nativeUrl)) {
+      await launchUrl(nativeUrl, mode: LaunchMode.externalApplication);
+    } else if (await canLaunchUrl(fallbackUrl)) {
+      // Fallback to browser if native app isn't installed
+      await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint("Could not launch any map application.");
+    }
+  } catch (e) {
+    debugPrint("Error launching map: $e");
+  }
+}
 
 // 2. Generates the markers based on assigned steps and active filters.
 final mapMarkersProvider = FutureProvider<Set<Marker>>((ref) async {
@@ -17,9 +59,8 @@ final mapMarkersProvider = FutureProvider<Set<Marker>>((ref) async {
 
   if (jobsAsync.value == null) return markers;
 
-  // Filter jobs based on the selected statuses
   final filteredJobs = jobsAsync.value!.where((job) {
-    if (activeFilters.isEmpty) return true; // Show all if no filter
+    if (activeFilters.isEmpty) return true;
     return activeFilters.contains(job.step.status);
   }).toList();
 
@@ -28,7 +69,6 @@ final mapMarkersProvider = FutureProvider<Set<Marker>>((ref) async {
 
     LatLng? position;
 
-    // First attempt: Geocode the address string (as requested)
     try {
       if (job.jobAddress!.fullAddress.isNotEmpty) {
         List<geo.Location> locations = await geo.locationFromAddress(
@@ -42,12 +82,9 @@ final mapMarkersProvider = FutureProvider<Set<Marker>>((ref) async {
         }
       }
     } catch (e) {
-      debugPrint(
-        "Geocoding failed for ${job.jobAddress!.fullAddress}, falling back to exact coords.",
-      );
+      debugPrint("Geocoding failed, falling back to exact coords.");
     }
 
-    // Fallback attempt: Use the database latitude/longitude
     if (position == null &&
         job.jobAddress!.latitude != null &&
         job.jobAddress!.longitude != null) {
@@ -55,18 +92,26 @@ final mapMarkersProvider = FutureProvider<Set<Marker>>((ref) async {
     }
 
     if (position != null) {
-      // Create a marker with a hue matching the status color
       final hue = _colorToHue(job.step.status.color);
+      final finalPosition = position;
+      final addressString =
+          job.jobAddress!.fullAddress; // Grab address for query
 
       markers.add(
         Marker(
           markerId: MarkerId(job.jobId.toString()),
-          position: position,
+          position: finalPosition,
           icon: BitmapDescriptor.defaultMarkerWithHue(hue),
           infoWindow: InfoWindow(
             title: job.step.name,
             snippet:
-                '${job.customer?.name ?? "No Customer"} • ${job.step.status.label}',
+                '${job.customer?.name ?? "No Customer"} • Tap for directions',
+            // UPDATED: Pass address string if available
+            onTap: () => _launchDirections(
+              finalPosition.latitude,
+              finalPosition.longitude,
+              addressString,
+            ),
           ),
         ),
       );
@@ -76,7 +121,6 @@ final mapMarkersProvider = FutureProvider<Set<Marker>>((ref) async {
   return markers;
 });
 
-// Helper to convert your StepStatus colors to Google Maps Hue
 double _colorToHue(Color color) {
   HSLColor hsl = HSLColor.fromColor(color);
   return hsl.hue;
