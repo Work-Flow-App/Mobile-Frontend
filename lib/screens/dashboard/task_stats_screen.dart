@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
-import 'package:mobile_frontend/widgets/app_branding.dart'; // Added for the SliverAppBar actions
+import 'package:mobile_frontend/widgets/app_branding.dart';
+import 'package:mobile_frontend/widgets/status_multi_filter.dart';
+import 'package:mobile_frontend/widgets/job_locations_map.dart';
 
 class TaskStatsScreen extends ConsumerWidget {
   const TaskStatsScreen({super.key});
@@ -255,6 +257,26 @@ class TaskStatsScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+
+                          const SizedBox(height: 24),
+
+                          // --- NEW: Map Section ---
+                          const Text(
+                            "Job Locations",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // The Multi-select Filter
+                          const StatusMultiFilter(),
+                          const SizedBox(height: 16),
+
+                          // The Map Widget
+                          const JobLocationsMap(),
+
                           const SizedBox(height: 40), // Bottom padding
                         ],
                       ),
