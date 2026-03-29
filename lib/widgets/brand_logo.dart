@@ -28,7 +28,7 @@ class BrandLogo extends StatelessWidget {
         width: axis == Axis.horizontal ? 10 : 0,
         height: axis == Axis.vertical ? 12 : 0,
       ),
-      SvgPicture.asset('assets/images/WorkFloow_text.svg', width: textSvgWidth),
+      SvgPicture.asset('assets/images/WorkFloow_text_white.svg', width: textSvgWidth),
     ];
 
     // Arrange children based on the provided Axis
