@@ -10,42 +10,97 @@ class StatusMultiFilter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeFilters = ref.watch(mapStatusFilterProvider);
 
-    return SizedBox(
-      height: 50,
-      child: ListView.builder(
+    return Container(
+      height: 40,
+      child: ListView(
         scrollDirection: Axis.horizontal,
-        itemCount: StepStatus.values.length,
-        itemBuilder: (context, index) {
-          final status = StepStatus.values[index];
-          final isSelected = activeFilters.contains(status);
+        children: [
+          // "All" chip is active when the set is empty
+          _buildFilterChip(context, ref, "All", activeFilters.isEmpty),
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: FilterChip(
-              label: Text(
-                status.label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black87,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-              selected: isSelected,
-              selectedColor: status.color,
-              backgroundColor: status.backgroundColor,
-              checkmarkColor: Colors.white,
-              onSelected: (bool selected) {
-                final currentFilters = Set<StepStatus>.from(activeFilters);
-                if (selected) {
-                  currentFilters.add(status);
-                } else {
-                  currentFilters.remove(status);
-                }
-                ref.read(mapStatusFilterProvider.notifier).state =
-                    currentFilters;
-              },
-            ),
-          );
+          // Map out the rest of the statuses
+          ...StepStatus.values.map((status) {
+            return _buildEnumChip(context, ref, status, activeFilters);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnumChip(
+    BuildContext context,
+    WidgetRef ref,
+    StepStatus status,
+    Set<StepStatus> activeFilters,
+  ) {
+    final isSelected = activeFilters.contains(status);
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 6.0, top: 4, bottom: 4),
+      child: FilterChip(
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+        label: Text(status.label),
+        selected: isSelected,
+        onSelected: (bool selected) {
+          final currentFilters = Set<StepStatus>.from(activeFilters);
+          if (selected) {
+            currentFilters.add(status);
+          } else {
+            currentFilters.remove(status);
+          }
+          ref.read(mapStatusFilterProvider.notifier).state = currentFilters;
         },
+        selectedColor: status.backgroundColor.withOpacity(0.20),
+        backgroundColor: Colors.white,
+        checkmarkColor: status.color,
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isSelected ? status.color : Colors.black87,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: isSelected ? status.color : Colors.grey.shade300,
+            width: 1.0,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        showCheckmark: false, // Matches the Home Dashboard design
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(
+    BuildContext context,
+    WidgetRef ref,
+    String label,
+    bool isSelected,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6.0, top: 4, bottom: 4),
+      child: FilterChip(
+        visualDensity: const VisualDensity(horizontal: -2, vertical: -4),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (_) {
+          // Selecting "All" clears the active filters set
+          ref.read(mapStatusFilterProvider.notifier).state = {};
+        },
+        selectedColor: Colors.black,
+        checkmarkColor: Colors.white,
+        labelStyle: TextStyle(
+          fontSize: 12,
+          color: isSelected ? Colors.white : Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Colors.black, width: 1.0),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        backgroundColor: Colors.white,
+        showCheckmark: false,
       ),
     );
   }
