@@ -99,7 +99,7 @@ class HomeDashboard extends ConsumerWidget {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      "user@example.com",
+                                      "User of WorkFloow",
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: Colors.grey[600],
