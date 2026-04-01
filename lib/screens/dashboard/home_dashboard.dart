@@ -17,15 +17,13 @@ class HomeDashboard extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors
-          .transparent, // Transparent so our container handles the rounded corners
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize:
-              0.45, // Slightly larger initial size to fit the new layout
+          initialChildSize: 0.55,
           minChildSize: 0.3,
-          maxChildSize: 0.85,
+          maxChildSize: 0.9,
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
@@ -33,43 +31,40 @@ class HomeDashboard extends ConsumerWidget {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(24),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
               ),
-              child: CustomScrollView(
-                controller: scrollController,
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // 1. Modern Drag Handle
-                        const SizedBox(height: 12),
-                        Container(
-                          height: 4,
-                          width: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
+              // Use a Column to separate the scrollable list from the fixed footer
+              child: Column(
+                children: [
+                  // 1. Drag Handle (Fixed at top)
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 4,
+                    width: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
 
-                        // 2. Brand Logo (SVG)
-                        SvgPicture.asset(
-                          'assets/images/WorkFloow_text.svg', // Ensure this path matches your pubspec.yaml
-                          height: 28, // Adjust size as needed
+                  // 2. Scrollable Content
+                  Expanded(
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      children: [
+                        const SizedBox(height: 12),
+                        // Brand Logo
+                        Center(
+                          child: SvgPicture.asset(
+                            'assets/images/WorkFloow_text.svg',
+                            height: 28,
+                          ),
                         ),
                         const SizedBox(height: 32),
 
-                        // 3. User Profile Section
+                        // User Profile Section
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: Row(
                             children: [
                               CircleAvatar(
@@ -93,11 +88,9 @@ class HomeDashboard extends ConsumerWidget {
                                       isAdmin ? "Administrator" : "Username",
                                       style: const TextStyle(
                                         fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: -0.5,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
                                     Text(
                                       "User of WorkFloow",
                                       style: TextStyle(
@@ -112,21 +105,9 @@ class HomeDashboard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Colors.black12,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
+                        const Divider(),
 
-                  // 4. Menu Items
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
+                        // Navigation Menu Items
                         _buildMenuItem(
                           context: context,
                           icon: Icons.task_alt,
@@ -138,32 +119,34 @@ class HomeDashboard extends ConsumerWidget {
                           context: context,
                           icon: Icons.analytics_outlined,
                           title: 'Task Overview',
-                          isSelected: false,
                           onTap: () {
                             Navigator.pop(context);
                             context.push('/task-stats');
                           },
                         ),
-                        const SizedBox(height: 16),
-                        const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Colors.black12,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.logout_rounded,
-                          title: 'Logout',
-                          isSelected: false,
-                          isDestructive: true,
-                          onTap: () {
-                            Navigator.pop(context);
-                            ref.read(authNotifierProvider.notifier).logout();
-                          },
-                        ),
-                        const SizedBox(height: 32), // Safe bottom padding
-                      ]),
+                        // Add more items here... they will scroll!
+                      ],
+                    ),
+                  ),
+
+                  // 3. Fixed Footer (Logout)
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      16,
+                      12,
+                      16,
+                      32,
+                    ), // Large bottom padding for safe area
+                    child: _buildMenuItem(
+                      context: context,
+                      icon: Icons.logout_rounded,
+                      title: 'Logout',
+                      isDestructive: true,
+                      onTap: () {
+                        Navigator.pop(context);
+                        ref.read(authNotifierProvider.notifier).logout();
+                      },
                     ),
                   ),
                 ],
