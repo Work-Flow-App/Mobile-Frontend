@@ -1,14 +1,23 @@
 import java.util.Base64
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val dartDefines = project.findProperty("dart-defines") as String?
+// Safely Load Keystore Properties (used by GitHub Actions)
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+val hasKeystore = keystorePropertiesFile.exists()
 
+if (hasKeystore) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+val dartDefines = project.findProperty("dart-defines") as String?
 val decodedDefines = mutableMapOf<String, String>()
 
 dartDefines?.split(",")?.forEach {
@@ -20,7 +29,7 @@ dartDefines?.split(",")?.forEach {
 }
 
 android {
-    namespace = "com.example.mobile_frontend"
+    namespace = "app.workfloow"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -34,24 +43,35 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.mobile_frontend"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "app.workfloow"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] =
-        decodedDefines["GOOGLE_MAPS_API_KEY"] ?: ""
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = decodedDefines["GOOGLE_MAPS_API_KEY"] ?: ""
+    }
+
+    // Create the Release Signing Config (Only if properties exist)
+    signingConfigs {
+        if (hasKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Conditionally apply the signing config
+            signingConfig = if (hasKeystore) {
+                signingConfigs.getByName("release") // Used by GitHub for Play Store
+            } else {
+                signingConfigs.getByName("debug") // Safe fallback for local testing
+            }
         }
     }
 }

@@ -1,0 +1,53 @@
+name: Production Android Build
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  build:
+    name: Build Prod AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Create .env.prod file
+        run: |
+          mkdir -p env
+          echo "BASE_URL=${{ secrets.PROD_BASE_URL }}" >> env/.env.prod
+          echo "SOME_API_KEY=${{ secrets.PROD_SOME_API_KEY }}" >> env/.env.prod
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}" >> env/.env.prod
+
+      - name: Setup Android Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+          echo "storeFile=keystore.jks" > android/key.properties
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release --dart-define-from-file=env/.env.prod
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-aab
+          path: build/app/outputs/bundle/release/app-release.aab
