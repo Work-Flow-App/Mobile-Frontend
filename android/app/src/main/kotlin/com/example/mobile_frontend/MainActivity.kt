@@ -1,4 +1,4 @@
-package com.example.mobile_frontend
+package app.workfloow
 
 import io.flutter.embedding.android.FlutterActivity
 
