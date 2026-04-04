@@ -37,9 +37,9 @@ jobs:
       - name: Create .env.dev file
         run: |
           mkdir -p env
-          echo "BASE_URL=${{ secrets.DEV_BASE_URL }}" >> env/.env.dev
-          echo "SOME_API_KEY=${{ secrets.DEV_SOME_API_KEY }}" >> env/.env.dev
-          echo "GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}" >> env/.env.dev
+          echo 'BASE_URL=${{ secrets.DEV_BASE_URL }} >> env/.env.dev
+          echo 'SOME_API_KEY=${{ secrets.DEV_SOME_API_KEY }}' >> env/.env.dev
+          echo 'GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}' >> env/.env.dev
 
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=env/.env.dev
