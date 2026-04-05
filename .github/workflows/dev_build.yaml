@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build Dev APK
+  # Job 1: Run tests and code analysis
+  test:
+    name: Run Tests
     runs-on: ubuntu-22.04
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -34,6 +34,29 @@ jobs:
           echo "Running a dummy test for 1 second..."
           sleep 1
           echo "Test passed!"
+
+  # Job 2: Build the APK (Requires Job 1 to pass)
+  build_apk:
+    name: Build Dev APK
+    needs: test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
 
       - name: Create .env.dev file
         run: |
