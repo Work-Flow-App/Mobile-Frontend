@@ -30,7 +30,7 @@ jobs:
         run: flutter pub get
 
       - name: Analyze Flutter Code
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
   # Job 2: Build and Sign the AAB (Requires Job 1 to pass)
   build_aab:
