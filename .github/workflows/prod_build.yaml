@@ -6,12 +6,37 @@ on:
       - production
   workflow_dispatch:
 
-
 jobs:
-  build:
-    name: Build Prod AAB
+  # Job 1: Static analysis and verification
+  verify:
+    name: Analyze Code
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Analyze Flutter Code
+        run: flutter analyze
+
+  # Job 2: Build and Sign the AAB (Requires Job 1 to pass)
+  build_aab:
+    name: Build Prod AAB
+    needs: verify
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -44,6 +69,7 @@ jobs:
           echo 'storePassword=${{ secrets.KEYSTORE_PASSWORD }}' >> android/key.properties
           echo 'keyPassword=${{ secrets.KEY_PASSWORD }}' >> android/key.properties
           echo 'keyAlias=${{ secrets.KEY_ALIAS }}' >> android/key.properties
+
       - name: Build App Bundle (AAB)
         run: flutter build appbundle --release --dart-define-from-file=env/.env.prod
 
