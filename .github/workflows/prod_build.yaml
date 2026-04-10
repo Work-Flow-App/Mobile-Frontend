@@ -32,9 +32,9 @@ jobs:
       - name: Analyze Flutter Code
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-  # Job 2: Build and Sign the AAB (Requires Job 1 to pass)
-  build_aab:
-    name: Build Prod AAB
+  # Job 2: Build and Sign the AAB and APK (Requires Job 1 to pass)
+  build_release:
+    name: Build Prod AAB & APK
     needs: verify
     runs-on: ubuntu-latest
     steps:
@@ -73,8 +73,17 @@ jobs:
       - name: Build App Bundle (AAB)
         run: flutter build appbundle --release --dart-define-from-file=env/.env.prod
 
+      - name: Build APK (For Testing)
+        run: flutter build apk --release --dart-define-from-file=env/.env.prod
+
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: production-aab
           path: build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
