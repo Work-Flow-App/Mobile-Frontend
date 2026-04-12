@@ -12,18 +12,45 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+// 1. Add WidgetsBindingObserver to listen for background/foreground state changes
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with WidgetsBindingObserver {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+
+  // 2. Create FocusNodes to track which field is currently active
+  final usernameFocusNode = FocusNode();
+  final passwordFocusNode = FocusNode();
 
   // State for toggling password visibility
   bool _obscurePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Register the observer
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    // Unregister the observer and dispose of all controllers/nodes
+    WidgetsBinding.instance.removeObserver(this);
+    usernameFocusNode.dispose();
+    passwordFocusNode.dispose();
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  // 3. Automatically show keyboard when the app resumes if a field is focused
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (usernameFocusNode.hasFocus || passwordFocusNode.hasFocus) {
+        SystemChannels.textInput.invokeMethod('TextInput.show');
+      }
+    }
   }
 
   @override
@@ -51,10 +78,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        // Set the background color to match the dark logo area
         backgroundColor: const Color(0xFF121212),
         body: SafeArea(
-          bottom: false, // Let the white sheet extend to the very bottom edge
+          bottom: false,
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
@@ -63,8 +89,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: IntrinsicHeight(
                     child: Column(
                       children: [
-                        // --- Logo Area ---
-                        // It will naturally take up the space it needs without overlapping
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 50.0),
@@ -78,8 +102,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
 
-                        // --- White "Sheet" Area ---
-                        // Expanded ensures it pushes to the bottom of the screen
                         Expanded(
                           child: Container(
                             width: double.infinity,
@@ -94,7 +116,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               horizontal: 30,
                               vertical: 40,
                             ),
-                            // Wrapping the form inside SafeArea so it respects bottom navigation bars
                             child: SafeArea(
                               top: false,
                               child: Column(
@@ -123,6 +144,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     label: "Username",
                                     hint: "username",
                                     controller: usernameController,
+                                    focusNode:
+                                        usernameFocusNode, // Pass FocusNode
                                     enabled: !isLoading,
                                   ),
                                   const SizedBox(height: 20),
@@ -132,6 +155,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     label: "Password",
                                     hint: "••••••••••••",
                                     controller: passwordController,
+                                    focusNode:
+                                        passwordFocusNode, // Pass FocusNode
                                     enabled: !isLoading,
                                     isPassword: true,
                                     obscureText: _obscurePassword,
@@ -152,6 +177,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       onPressed: isLoading
                                           ? null
                                           : () {
+                                              // Dismiss keyboard on submit
+                                              FocusScope.of(context).unfocus();
+
                                               final cleanedUsername =
                                                   usernameController.text
                                                       .trim();
@@ -217,6 +245,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     required String label,
     required String hint,
     required TextEditingController controller,
+    required FocusNode focusNode, // 4. Require the FocusNode
     bool enabled = true,
     bool isPassword = false,
     bool obscureText = false,
@@ -235,9 +264,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          focusNode: focusNode, // Assign FocusNode
           enabled: enabled,
           obscureText: isPassword ? obscureText : false,
           style: const TextStyle(color: Colors.black),
+
+          // 5. Unfocus when tapping anywhere outside the text field
+          onTapOutside: (event) => FocusScope.of(context).unfocus(),
+
+          // 6. Force the keyboard to show if the user taps a field that already has focus
+          onTap: () {
+            if (focusNode.hasFocus) {
+              SystemChannels.textInput.invokeMethod('TextInput.show');
+            }
+          },
+
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Colors.grey),
