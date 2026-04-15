@@ -1,4 +1,4 @@
-name: Development Android Build
+name: Development Build
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   # Job 1: Run tests and code analysis
   test:
     name: Run Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -35,7 +35,7 @@ jobs:
           sleep 1
           echo "Test passed!"
 
-  # Job 2: Build the APK (Requires Job 1 to pass)
+  # Job 2: Build the Android APK
   build_apk:
     name: Build Dev APK
     needs: test
@@ -43,12 +43,39 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Dependencies
+        run: flutter pub get
+      - name: Create .env.dev file
+        run: |
+          mkdir -p env
+          echo 'BASE_URL=${{ secrets.DEV_BASE_URL }}' >> env/.env.dev
+          echo 'SOME_API_KEY=${{ secrets.DEV_SOME_API_KEY }}' >> env/.env.dev
+          echo 'GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}' >> env/.env.dev
+      - name: Build APK
+        run: flutter build apk --release --dart-define-from-file=env/.env.dev
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: development-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  # Job 3: Build the iOS App (Unsigned for Dev)
+  build_ios:
+    name: Build Dev iOS
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -65,11 +92,14 @@ jobs:
           echo 'SOME_API_KEY=${{ secrets.DEV_SOME_API_KEY }}' >> env/.env.dev
           echo 'GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}' >> env/.env.dev
 
-      - name: Build APK
-        run: flutter build apk --release --dart-define-from-file=env/.env.dev
+      - name: Build iOS App (No Codesign)
+        run: flutter build ios --release --no-codesign --dart-define-from-file=env/.env.dev
 
-      - name: Upload APK Artifact
+      - name: Compress iOS App
+        run: tar -czf ios-build.tar.gz build/ios/iphoneos/Runner.app
+
+      - name: Upload iOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: development-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: development-ios
+          path: ios-build.tar.gz
