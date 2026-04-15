@@ -104,6 +104,7 @@ jobs:
   #   name: Build Prod iOS IPA
   #   needs: verify
   #   runs-on: macos-latest
+
   #   steps:
   #     - name: Checkout Code
   #       uses: actions/checkout@v4
@@ -112,9 +113,18 @@ jobs:
   #       uses: subosito/flutter-action@v2
   #       with:
   #         channel: 'stable'
+  #
+  #     - name: Install CocoaPods
+  #       run: sudo gem install cocoapods
 
   #     - name: Install Dependencies
   #       run: flutter pub get
+
+  #     - name: Install iOS Pods
+  #       run: |
+  #         cd ios
+  #         pod install
+  #         cd ..
 
   #     - name: Create .env.prod file
   #       run: |
@@ -130,37 +140,31 @@ jobs:
   #         BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
   #         KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
   #       run: |
-  #         # Create variables
   #         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
   #         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
   #         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-  #         # Import certificate and provisioning profile from secrets
   #         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
   #         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
-  #         # Create temporary keychain
   #         security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
   #         security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
   #         security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-  #         # Import certificate to keychain
   #         security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
   #         security list-keychain -d user -s $KEYCHAIN_PATH
 
-  #         # Apply provisioning profile
   #         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
   #         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
   #     - name: Build IPA
-  #       # Note: You will need an ExportOptions.plist file in your ios/ folder
   #       run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
 
   #     - name: Clean up Keychain and Profile
   #       if: ${{ always() }}
   #       run: |
   #         security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
-  #         rm ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
+  #         rm -f ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
 
   #     - name: Upload IPA Artifact
   #       uses: actions/upload-artifact@v4
