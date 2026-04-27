@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/models/job/work_log_model.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
+import 'package:mobile_frontend/widgets/persistent_text_field.dart';
 
 class WorkLogsSheet extends ConsumerStatefulWidget {
   final JobStep step;
@@ -252,9 +253,9 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               ),
             ),
           const SizedBox(height: 12),
-          TextField(
+          PersistentTextField(
             controller: _descriptionController,
-            maxLines: 3,
+            maxLines: 5,
             decoration: InputDecoration(
               hintText: "Describe the work done (Optional)...",
               border: OutlineInputBorder(

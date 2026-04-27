@@ -11,6 +11,7 @@ import 'package:mobile_frontend/screens/step_detail/work_logs_sheet.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:mobile_frontend/widgets/persistent_text_field.dart';
 
 class StepDetailScreen extends ConsumerStatefulWidget {
   // CHANGED: Accept the full JobData wrapper instead of just JobStep
@@ -931,7 +932,7 @@ class _TimelineBottomSheetState extends ConsumerState<TimelineBottomSheet> {
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
-                    child: TextField(
+                    child: PersistentTextField(
                       controller: commentController,
                       maxLines: 5,
                       minLines: 1,
