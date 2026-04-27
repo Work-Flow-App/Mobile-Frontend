@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/brand_logo.dart';
+import 'package:mobile_frontend/widgets/persistent_text_field.dart'; // <-- Imported the new reusable widget
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -12,45 +13,20 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-// 1. Add WidgetsBindingObserver to listen for background/foreground state changes
-class _LoginScreenState extends ConsumerState<LoginScreen>
-    with WidgetsBindingObserver {
+// Removed the WidgetsBindingObserver mixin, keeping it clean
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
-
-  // 2. Create FocusNodes to track which field is currently active
-  final usernameFocusNode = FocusNode();
-  final passwordFocusNode = FocusNode();
 
   // State for toggling password visibility
   bool _obscurePassword = true;
 
   @override
-  void initState() {
-    super.initState();
-    // Register the observer
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
   void dispose() {
-    // Unregister the observer and dispose of all controllers/nodes
-    WidgetsBinding.instance.removeObserver(this);
-    usernameFocusNode.dispose();
-    passwordFocusNode.dispose();
+    // Only need to dispose of the controllers now
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
-  }
-
-  // 3. Automatically show keyboard when the app resumes if a field is focused
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      if (usernameFocusNode.hasFocus || passwordFocusNode.hasFocus) {
-        SystemChannels.textInput.invokeMethod('TextInput.show');
-      }
-    }
   }
 
   @override
@@ -144,8 +120,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     label: "Username",
                                     hint: "username",
                                     controller: usernameController,
-                                    focusNode:
-                                        usernameFocusNode, // Pass FocusNode
                                     enabled: !isLoading,
                                   ),
                                   const SizedBox(height: 20),
@@ -155,8 +129,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     label: "Password",
                                     hint: "••••••••••••",
                                     controller: passwordController,
-                                    focusNode:
-                                        passwordFocusNode, // Pass FocusNode
                                     enabled: !isLoading,
                                     isPassword: true,
                                     obscureText: _obscurePassword,
@@ -240,12 +212,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  // Reusable TextField helper
+  // Reusable TextField helper utilizing PersistentTextField
   Widget _buildTextField({
     required String label,
     required String hint,
     required TextEditingController controller,
-    required FocusNode focusNode, // 4. Require the FocusNode
     bool enabled = true,
     bool isPassword = false,
     bool obscureText = false,
@@ -262,23 +233,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
+
+        // Using the new wrapper widget instead of standard TextField
+        PersistentTextField(
           controller: controller,
-          focusNode: focusNode, // Assign FocusNode
           enabled: enabled,
           obscureText: isPassword ? obscureText : false,
           style: const TextStyle(color: Colors.black),
-
-          // 5. Unfocus when tapping anywhere outside the text field
-          onTapOutside: (event) => FocusScope.of(context).unfocus(),
-
-          // 6. Force the keyboard to show if the user taps a field that already has focus
-          onTap: () {
-            if (focusNode.hasFocus) {
-              SystemChannels.textInput.invokeMethod('TextInput.show');
-            }
-          },
-
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: Colors.grey),
