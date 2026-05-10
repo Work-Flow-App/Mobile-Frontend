@@ -29,7 +29,7 @@ dartDefines?.split(",")?.forEach {
 }
 
 android {
-    namespace = "app.workfloow"
+    namespace = "com.workfloow.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -43,7 +43,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "app.workfloow"
+        applicationId = "com.workfloow.app"
         minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode

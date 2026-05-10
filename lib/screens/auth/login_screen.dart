@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/brand_logo.dart';
+import 'package:mobile_frontend/widgets/persistent_text_field.dart'; // <-- Imported the new reusable widget
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +13,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
+// Removed the WidgetsBindingObserver mixin, keeping it clean
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
@@ -21,6 +23,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    // Only need to dispose of the controllers now
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -51,10 +54,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         statusBarColor: Colors.transparent,
       ),
       child: Scaffold(
-        // Set the background color to match the dark logo area
         backgroundColor: const Color(0xFF121212),
         body: SafeArea(
-          bottom: false, // Let the white sheet extend to the very bottom edge
+          bottom: false,
           child: LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
@@ -63,8 +65,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: IntrinsicHeight(
                     child: Column(
                       children: [
-                        // --- Logo Area ---
-                        // It will naturally take up the space it needs without overlapping
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 50.0),
@@ -78,8 +78,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ),
 
-                        // --- White "Sheet" Area ---
-                        // Expanded ensures it pushes to the bottom of the screen
                         Expanded(
                           child: Container(
                             width: double.infinity,
@@ -94,7 +92,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               horizontal: 30,
                               vertical: 40,
                             ),
-                            // Wrapping the form inside SafeArea so it respects bottom navigation bars
                             child: SafeArea(
                               top: false,
                               child: Column(
@@ -152,6 +149,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       onPressed: isLoading
                                           ? null
                                           : () {
+                                              // Dismiss keyboard on submit
+                                              FocusScope.of(context).unfocus();
+
                                               final cleanedUsername =
                                                   usernameController.text
                                                       .trim();
@@ -212,7 +212,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // Reusable TextField helper
+  // Reusable TextField helper utilizing PersistentTextField
   Widget _buildTextField({
     required String label,
     required String hint,
@@ -233,7 +233,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
+
+        // Using the new wrapper widget instead of standard TextField
+        PersistentTextField(
           controller: controller,
           enabled: enabled,
           obscureText: isPassword ? obscureText : false,
