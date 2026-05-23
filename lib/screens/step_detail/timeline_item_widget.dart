@@ -66,7 +66,7 @@ class TimelineItemWidget extends StatelessWidget {
     final time = DateFormat.jm().format(event.createdAt);
     final displayName = event.actorId == currentWorkerId
         ? "You"
-        : "User #${event.actorId}";
+        : (event.actorUsername ?? "User #${event.actorId}");
 
     return IntrinsicHeight(
       child: Row(
