@@ -51,7 +51,41 @@ extension StepStatusExtension on StepStatus {
   }
 }
 
-// --- Original JobStep Model ---
+enum SlaStatus { NOT_APPLICABLE, ON_TRACK, ATTENTION_NEEDED, BREACHED }
+
+extension SlaStatusExtension on SlaStatus {
+  String get label => name.replaceAll('_', ' ');
+
+  Color get color {
+    switch (this) {
+      case SlaStatus.ON_TRACK:
+        return Colors.green.shade600;
+      case SlaStatus.ATTENTION_NEEDED:
+        return Colors.orange.shade600;
+      case SlaStatus.BREACHED:
+        return Colors.red.shade600;
+      case SlaStatus.NOT_APPLICABLE:
+      default:
+        return Colors.grey.shade500;
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case SlaStatus.ON_TRACK:
+        return Icons.check_circle_outline;
+      case SlaStatus.ATTENTION_NEEDED:
+        return Icons.warning_amber_rounded;
+      case SlaStatus.BREACHED:
+        return Icons.error_outline_rounded;
+      case SlaStatus.NOT_APPLICABLE:
+      default:
+        return Icons.remove_circle_outline;
+    }
+  }
+}
+
+// --- JobStep Model ---
 class JobStep {
   final int id;
   final String name;
@@ -62,6 +96,10 @@ class JobStep {
   final DateTime? startedAt;
   final DateTime? completedAt;
 
+  final int expectedDurationMinutes;
+  final int maximumDurationMinutes;
+  final SlaStatus slaStatus;
+
   JobStep({
     required this.id,
     required this.name,
@@ -71,12 +109,20 @@ class JobStep {
     required this.assignedWorkerIds,
     this.startedAt,
     this.completedAt,
+    this.expectedDurationMinutes = 0,
+    this.maximumDurationMinutes = 0,
+    this.slaStatus = SlaStatus.NOT_APPLICABLE,
   });
 
   factory JobStep.fromJson(Map<String, dynamic> json) {
     StepStatus mappedStatus = StepStatus.values.firstWhere(
       (e) => e.name == json['status'],
       orElse: () => StepStatus.NOT_STARTED,
+    );
+
+    SlaStatus mappedSla = SlaStatus.values.firstWhere(
+      (e) => e.name == json['slaStatus'],
+      orElse: () => SlaStatus.NOT_APPLICABLE,
     );
 
     return JobStep(
@@ -92,6 +138,9 @@ class JobStep {
       completedAt: json['completedAt'] != null
           ? DateTime.tryParse(json['completedAt'])
           : null,
+      expectedDurationMinutes: json['expectedDurationMinutes'] ?? 0,
+      maximumDurationMinutes: json['maximumDurationMinutes'] ?? 0,
+      slaStatus: mappedSla,
     );
   }
 
