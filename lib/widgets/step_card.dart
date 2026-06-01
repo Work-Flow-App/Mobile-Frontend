@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
+import 'package:mobile_frontend/widgets/sla_tracker_widget.dart';
 import 'package:intl/intl.dart';
 
 class StepCard extends StatelessWidget {
@@ -193,6 +194,9 @@ class StepCard extends StatelessWidget {
                           ),
                         ),
                       ],
+
+                      const SizedBox(height: 12),
+                      SlaTrackerWidget(step: step, compact: true),
 
                       // --- META INFO SECTION (Customer & Location) ---
                       if ((customer != null && customer.name.isNotEmpty) ||

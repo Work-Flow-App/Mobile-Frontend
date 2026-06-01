@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
+import 'package:mobile_frontend/widgets/sla_tracker_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class StepInfoSection extends ConsumerWidget {
@@ -103,6 +104,13 @@ class StepInfoSection extends ConsumerWidget {
               children: [
                 _buildHeader(context, step),
                 const SizedBox(height: 32),
+
+                // High visibility SLA Tracker
+                if (step.slaStatus != SlaStatus.NOT_APPLICABLE ||
+                    step.maximumDurationMinutes > 0) ...[
+                  SlaTrackerWidget(step: step, compact: false),
+                  const SizedBox(height: 32),
+                ],
 
                 // --- ACCORDION SECTIONS ---
                 if (step.description.isNotEmpty)
