@@ -24,6 +24,9 @@ class WorkLogsSheet extends ConsumerStatefulWidget {
 
 class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
   bool _isAddingLog = false;
+  bool _use24HourFormat = false;
+  bool _isSubmitting =
+      false; // <-- ADDED: Track submission state to prevent double taps
 
   // Form Controllers
   final _descriptionController = TextEditingController();
@@ -45,6 +48,34 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
       return '${hours}h ${minutes}m';
     }
     return '${minutes}m';
+  }
+
+  // Helper to display TimeOfDay based on the toggle
+  String _getDisplayTime(TimeOfDay time) {
+    if (_use24HourFormat) {
+      final h = time.hour.toString().padLeft(2, '0');
+      final m = time.minute.toString().padLeft(2, '0');
+      return '$h:$m';
+    } else {
+      final h = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+      final m = time.minute.toString().padLeft(2, '0');
+      final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+      return '$h:$m $period';
+    }
+  }
+
+  // Helper to format API time strings based on the toggle
+  String _formatApiTimeString(String apiTime) {
+    try {
+      final parts = apiTime.split(':');
+      final timeOfDay = TimeOfDay(
+        hour: int.parse(parts[0]),
+        minute: int.parse(parts[1]),
+      );
+      return _getDisplayTime(timeOfDay);
+    } catch (e) {
+      return apiTime.length >= 5 ? apiTime.substring(0, 5) : apiTime;
+    }
   }
 
   // Check if Time Out is strictly after Time In
@@ -70,10 +101,14 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
   }
 
   Future<void> _submitLog() async {
-    if (!_canSave) return;
+    // <-- CHANGED: Abort immediately if already submitting to prevent double tap
+    if (!_canSave || _isSubmitting) return;
+
+    setState(() {
+      _isSubmitting = true; // Lock the button
+    });
 
     try {
-      // CHANGED: Talk directly to the jobServiceProvider instead of the controller
       await ref
           .read(jobServiceProvider)
           .addWorkLog(
@@ -84,16 +119,15 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
             description: _descriptionController.text.trim(),
           );
 
-      // Refresh the provider directly
       ref.refresh(stepWorkLogsProvider(widget.step.id).future);
 
-      // Reset form
       setState(() {
         _isAddingLog = false;
         _selectedDate = null;
         _timeIn = null;
         _timeOut = null;
         _descriptionController.clear();
+        _isSubmitting = false; // Unlock state
       });
 
       if (mounted) {
@@ -106,6 +140,10 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isSubmitting =
+              false; // <-- CHANGED: Unlock if an error occurs so they can try again
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
         );
@@ -118,7 +156,6 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
     final logsAsync = ref.watch(stepWorkLogsProvider(widget.step.id));
 
     return RefreshIndicator(
-      // CHANGED: Refresh the provider directly instead of using the controller
       onRefresh: () async {
         return ref.refresh(stepWorkLogsProvider(widget.step.id).future);
       },
@@ -146,27 +183,71 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            "Worker Logs",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          const Expanded(
+            child: Text(
+              "Worker Logs",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          if (widget.canEdit && !_isAddingLog)
-            ElevatedButton.icon(
-              onPressed: () => setState(() => _isAddingLog = true),
-              icon: const Icon(Icons.add),
-              label: const Text("Add Log"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+          const SizedBox(width: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment<bool>(
+                    value: false,
+                    label: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 2),
+                      child: Text('12h'),
+                    ),
+                  ),
+                  ButtonSegment<bool>(
+                    value: true,
+                    label: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 2),
+                      child: Text('24h'),
+                    ),
+                  ),
+                ],
+                selected: {_use24HourFormat},
+                onSelectionChanged: (Set<bool> newSelection) {
+                  setState(() => _use24HourFormat = newSelection.first);
+                },
+                showSelectedIcon: false,
+                style: SegmentedButton.styleFrom(
+                  visualDensity: const VisualDensity(
+                    horizontal: -4,
+                    vertical: -4,
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              if (widget.canEdit && !_isAddingLog)
+                ElevatedButton.icon(
+                  onPressed: () => setState(() => _isAddingLog = true),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text("Add"),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -210,12 +291,20 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               Expanded(
                 child: _buildPickerTile(
                   title: "Time In",
-                  value: _timeIn != null ? _timeIn!.format(context) : "Select",
+                  value: _timeIn != null ? _getDisplayTime(_timeIn!) : "Select",
                   icon: Icons.access_time,
                   onTap: () async {
                     final time = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
+                      builder: (context, child) {
+                        return MediaQuery(
+                          data: MediaQuery.of(
+                            context,
+                          ).copyWith(alwaysUse24HourFormat: _use24HourFormat),
+                          child: child!,
+                        );
+                      },
                     );
                     if (time != null) setState(() => _timeIn = time);
                   },
@@ -226,13 +315,21 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
                 child: _buildPickerTile(
                   title: "Time Out",
                   value: _timeOut != null
-                      ? _timeOut!.format(context)
+                      ? _getDisplayTime(_timeOut!)
                       : "Select",
                   icon: Icons.access_time_filled,
                   onTap: () async {
                     final time = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
+                      builder: (context, child) {
+                        return MediaQuery(
+                          data: MediaQuery.of(
+                            context,
+                          ).copyWith(alwaysUse24HourFormat: _use24HourFormat),
+                          child: child!,
+                        );
+                      },
                     );
                     if (time != null) setState(() => _timeOut = time);
                   },
@@ -275,14 +372,25 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
               ),
               const SizedBox(width: 8),
               ElevatedButton(
-                onPressed: _canSave ? _submitLog : null,
+                // <-- CHANGED: Disable button if it is currently submitting
+                onPressed: (_canSave && !_isSubmitting) ? _submitLog : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).primaryColor,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: Colors.grey.shade300,
                   disabledForegroundColor: Colors.grey.shade600,
                 ),
-                child: const Text("Save Log"),
+                // <-- CHANGED: Show a sleek loading spinner when submitting
+                child: _isSubmitting
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.grey.shade600,
+                        ),
+                      )
+                    : const Text("Save Log"),
               ),
             ],
           ),
@@ -404,14 +512,12 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
           padding: const EdgeInsets.all(16),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
-              // Show the total summary card as the first item
               if (index == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
                   child: _buildSummaryCard(data.totalWorkedMinutes),
                 );
               }
-              // Render standard log cards for the rest
               return _buildLogCard(logs[index - 1]);
             }, childCount: logs.length + 1),
           ),
@@ -460,7 +566,7 @@ class _WorkLogsSheetState extends ConsumerState<WorkLogsSheet> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        "${log.timeIn.substring(0, 5)} - ${log.timeOut.substring(0, 5)}",
+                        "${_formatApiTimeString(log.timeIn)} - ${_formatApiTimeString(log.timeOut)}",
                         style: TextStyle(
                           color: Colors.orange.shade900,
                           fontSize: 12,
