@@ -133,10 +133,10 @@ class JobStep {
       status: mappedStatus,
       assignedWorkerIds: List<int>.from(json['assignedWorkerIds'] ?? []),
       startedAt: json['startedAt'] != null
-          ? DateTime.tryParse(json['startedAt'])
+          ? DateTime.tryParse(json['startedAt'])?.toLocal()
           : null,
       completedAt: json['completedAt'] != null
-          ? DateTime.tryParse(json['completedAt'])
+          ? DateTime.tryParse(json['completedAt'])?.toLocal()
           : null,
       expectedDurationMinutes: json['expectedDurationMinutes'] ?? 0,
       maximumDurationMinutes: json['maximumDurationMinutes'] ?? 0,

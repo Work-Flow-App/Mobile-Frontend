@@ -87,7 +87,9 @@ class TimelineEvent {
       fileUrl: json['fileUrl'],
       actorId: json['actorId'] ?? 0,
       actorUsername: json['actorUsername'],
-      createdAt: DateTime.tryParse(json['createdAt'] ?? "") ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(json['createdAt'] ?? "")?.toLocal() ??
+          DateTime.now(),
     );
   }
 
