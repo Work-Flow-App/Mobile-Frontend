@@ -47,7 +47,7 @@ class WorkLog {
       workedMinutes: json['workedMinutes'] ?? 0, // Parse the new field
       description: json['description'] ?? '',
       loggedById: json['loggedById'],
-      createdAt: DateTime.parse(json['createdAt']),
+      createdAt: DateTime.parse(json['createdAt']).toLocal(),
     );
   }
 }

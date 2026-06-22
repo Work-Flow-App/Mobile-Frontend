@@ -44,6 +44,7 @@ class TimelineEvent {
   final String? description; //for attachments
   final String? fileUrl;
   final int actorId;
+  final String? actorUsername;
   final DateTime createdAt;
 
   TimelineEvent({
@@ -54,6 +55,7 @@ class TimelineEvent {
     this.description,
     this.fileUrl,
     required this.actorId,
+    this.actorUsername,
     required this.createdAt,
   });
 
@@ -84,7 +86,10 @@ class TimelineEvent {
       description: json['description'],
       fileUrl: json['fileUrl'],
       actorId: json['actorId'] ?? 0,
-      createdAt: DateTime.tryParse(json['createdAt'] ?? "") ?? DateTime.now(),
+      actorUsername: json['actorUsername'],
+      createdAt:
+          DateTime.tryParse(json['createdAt'] ?? "")?.toLocal() ??
+          DateTime.now(),
     );
   }
 
