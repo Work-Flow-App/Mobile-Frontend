@@ -279,6 +279,11 @@ class AssignedAsset {
   final String? assetTag;
   final String? notes;
   final String status;
+  final DateTime? assignedAt;
+  final DateTime? returnedAt;
+  final int? durationDays;
+  final int? expectedDurationDays;
+  final bool? slaBreached;
 
   AssignedAsset({
     required this.assignmentId,
@@ -289,6 +294,11 @@ class AssignedAsset {
     this.assetTag,
     this.notes,
     required this.status,
+    this.assignedAt,
+    this.returnedAt,
+    this.durationDays,
+    this.expectedDurationDays,
+    this.slaBreached,
   });
 
   factory AssignedAsset.fromJson(Map<String, dynamic> json) {
@@ -301,6 +311,15 @@ class AssignedAsset {
       assetTag: json['assetTag'],
       notes: json['notes'],
       status: json['status'] ?? 'UNKNOWN',
+      assignedAt: json['assignedAt'] != null
+          ? DateTime.tryParse(json['assignedAt'])?.toLocal()
+          : null,
+      returnedAt: json['returnedAt'] != null
+          ? DateTime.tryParse(json['returnedAt'])?.toLocal()
+          : null,
+      durationDays: json['durationDays'],
+      expectedDurationDays: json['expectedDurationDays'],
+      slaBreached: json['slaBreached'],
     );
   }
 }
