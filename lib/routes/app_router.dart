@@ -9,6 +9,7 @@ import 'package:mobile_frontend/screens/auth/signup_screen.dart';
 import 'package:mobile_frontend/screens/dashboard/home_dashboard.dart';
 import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
 import 'package:mobile_frontend/screens/dashboard/task_stats_screen.dart';
+import 'package:mobile_frontend/screens/asset/assigned_assets_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   // 1. Watch Auth State for changes (Login, Logout, Role change)
@@ -79,7 +80,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const TaskStatsScreen(),
       ),
 
-      // --- ADDED THIS ROUTE ---
       GoRoute(
         path: '/step-detail',
         name: 'step-detail',
@@ -87,6 +87,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           final jobData = state.extra as JobData;
           return StepDetailScreen(jobData: jobData);
         },
+      ),
+
+      GoRoute(
+        path: '/my-assets',
+        name: 'my-assets',
+        builder: (context, state) => const AssignedAssetsScreen(),
       ),
 
       // --- Admin Only Routes (Example) ---
