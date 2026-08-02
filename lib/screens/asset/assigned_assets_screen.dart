@@ -13,11 +13,9 @@ class AssignedAssetsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      // 1. Wrap the entire body in a NestedScrollView
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
-            // 2. Use SliverAppBar for the floating/snapping hide effect
             SliverAppBar(
               title: const Text(
                 "My Assigned Assets",
@@ -77,10 +75,6 @@ class AssignedAssetsScreen extends ConsumerWidget {
               onRefresh: () async => ref.refresh(assignedAssetsProvider.future),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // 3. Fix orientation logic: Only use Grid if it's wide AND tall (Tablets)
-                  // final isTablet =
-                      // constraints.maxWidth > 700 && constraints.maxHeight > 500;
-
                   final isTablet = constraints.maxWidth > 650;
 
                   if (isTablet) {
@@ -90,21 +84,22 @@ class AssignedAssetsScreen extends ConsumerWidget {
                         crossAxisCount: 2,
                         crossAxisSpacing: 24,
                         mainAxisSpacing: 24,
-                        // 4. Use mainAxisExtent to give the card a guaranteed safe height (prevents overflow)
-                        mainAxisExtent: 480,
+                        // INCREASED: Gave the card more vertical room for SLA & Notes
+                        mainAxisExtent: 620,
                       ),
                       itemCount: assets.length,
                       itemBuilder: (context, index) =>
-                          AssetCard(asset: assets[index]),
+                          // PASSING isGrid: true
+                          AssetCard(asset: assets[index], isGrid: true),
                     );
                   } else {
                     return ListView.builder(
                       padding: const EdgeInsets.all(16),
-                      // physics ensures pull-to-refresh works even if the list is short
                       physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: assets.length,
                       itemBuilder: (context, index) =>
-                          AssetCard(asset: assets[index]),
+                          // PASSING isGrid: false
+                          AssetCard(asset: assets[index], isGrid: false),
                     );
                   }
                 },
