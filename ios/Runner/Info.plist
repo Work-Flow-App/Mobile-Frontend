@@ -48,10 +48,7 @@
     <string>We need microphone access in case you choose to upload a video attachment for your job log.</string>
 
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app requires access to your location to update the current location of your assigned assets and job sites.</string>
-    
-    <key>NSLocationAlwaysUsageDescription</key>
-    <string>This app requires access to your location to accurately track asset locations.</string>
+    <string>Your location is used to automatically fill in the asset's current location for your review when you tap the update button.</string>
     
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
