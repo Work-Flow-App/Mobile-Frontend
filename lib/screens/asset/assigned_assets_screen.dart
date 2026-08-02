@@ -78,8 +78,10 @@ class AssignedAssetsScreen extends ConsumerWidget {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   // 3. Fix orientation logic: Only use Grid if it's wide AND tall (Tablets)
-                  final isTablet =
-                      constraints.maxWidth > 700 && constraints.maxHeight > 500;
+                  // final isTablet =
+                      // constraints.maxWidth > 700 && constraints.maxHeight > 500;
+
+                  final isTablet = constraints.maxWidth > 650;
 
                   if (isTablet) {
                     return GridView.builder(
