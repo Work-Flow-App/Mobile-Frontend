@@ -124,7 +124,15 @@ class HomeDashboard extends ConsumerWidget {
                             context.push('/task-stats');
                           },
                         ),
-                        // Add more items here... they will scroll!
+                        _buildMenuItem(
+                          context: context,
+                          icon: Icons.inventory_2_outlined,
+                          title: 'My Assets',
+                          onTap: () {
+                            Navigator.pop(context);
+                            context.push('/my-assets');
+                          },
+                        ), // Add more items here... they will scroll!
                       ],
                     ),
                   ),

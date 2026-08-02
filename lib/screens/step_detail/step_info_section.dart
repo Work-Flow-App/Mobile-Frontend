@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/job/job_model.dart';
 import 'package:mobile_frontend/widgets/sla_tracker_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 class StepInfoSection extends ConsumerWidget {
   final JobData jobData;
@@ -341,15 +342,22 @@ class StepInfoSection extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: assets.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         final asset = assets[index];
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.orange.shade50.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.orange.shade100),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.orange.shade200, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.shade900.withOpacity(0.04),
+                blurRadius: 15,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,7 +375,8 @@ class StepInfoSection extends ConsumerWidget {
                               : "Asset ID: ${asset.assetId}",
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 17,
+                            color: Colors.black87,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -381,7 +390,7 @@ class StepInfoSection extends ConsumerWidget {
                                 color: _getAssetStatusColor(asset.status),
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 8),
                             Text(
                               asset.status.toUpperCase(),
                               style: TextStyle(
@@ -416,18 +425,23 @@ class StepInfoSection extends ConsumerWidget {
                     _buildAssetChip("Tag: ${asset.assetTag}", Icons.qr_code),
                 ],
               ),
+
+              // --- NEW: ASSET SLA TRACKER COMPONENT ---
+              if (asset.assignedAt != null || asset.durationDays != null)
+                _buildAssetSlaTracker(asset),
+
               if (asset.notes?.isNotEmpty == true) ...[
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.symmetric(vertical: 16),
                   child: Divider(height: 1),
                 ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      Icons.notes_rounded,
-                      size: 18,
-                      color: Colors.amber.shade700,
+                      Icons.info_outline_rounded,
+                      size: 20,
+                      color: Colors.orange.shade800,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -447,6 +461,167 @@ class StepInfoSection extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAssetSlaTracker(AssignedAsset asset) {
+    final assignedDate = asset.assignedAt;
+
+    // Auto-calculate days if not explicitly provided but we have a start date
+    final int currentDays =
+        asset.durationDays ??
+        (assignedDate != null
+            ? DateTime.now().difference(assignedDate).inDays
+            : 0);
+
+    final int? limitDays = asset.expectedDurationDays;
+
+    // Determine breach status
+    // Rule: Boolean explicit true OR calculation exceeded
+    bool isBreached =
+        asset.slaBreached == true ||
+        (limitDays != null && currentDays > limitDays);
+
+    // Fallback: If backend nullifies fields but injects an alert into notes
+    if (asset.notes != null && asset.notes!.contains('SLA Breached!')) {
+      isBreached = true;
+    }
+
+    // Modern color mapping for the Asset SLA card
+    final Color statusColor = isBreached
+        ? Colors.red.shade600
+        : Colors.teal.shade600;
+    final Color bgColor = isBreached ? Colors.red.shade50 : Colors.teal.shade50;
+    final IconData statusIcon = isBreached
+        ? Icons.error_outline_rounded
+        : Icons.check_circle_outline_rounded;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(statusIcon, color: statusColor, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                "Asset SLA",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: statusColor,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  isBreached ? "BREACHED" : "ON TRACK",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Wrap ensures it adapts nicely on smaller phone screens
+          Wrap(
+            spacing: 24,
+            runSpacing: 12,
+            children: [
+              _buildSlaStatInfo(
+                "Checked Out",
+                assignedDate != null
+                    ? DateFormat('MMM dd, yyyy').format(assignedDate)
+                    : "Unknown",
+                Icons.calendar_today_outlined,
+                statusColor,
+              ),
+              _buildSlaStatInfo(
+                "Duration",
+                "$currentDays Days",
+                Icons.timer_outlined,
+                statusColor,
+              ),
+              if (limitDays != null)
+                _buildSlaStatInfo(
+                  "SLA Limit",
+                  "$limitDays Days",
+                  Icons.flag_outlined,
+                  statusColor,
+                ),
+            ],
+          ),
+          if (limitDays != null && limitDays > 0) ...[
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: (currentDays / limitDays).clamp(0.0, 1.0),
+                backgroundColor: statusColor.withOpacity(0.15),
+                valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                minHeight: 8,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSlaStatInfo(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color.withOpacity(0.8)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color.withOpacity(0.8),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     );
   }
 
@@ -491,14 +666,14 @@ class StepInfoSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.grey.shade50,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.grey.shade500),
+          Icon(icon, size: 14, color: Colors.grey.shade600),
           const SizedBox(width: 8),
           SelectableText(
             text,
