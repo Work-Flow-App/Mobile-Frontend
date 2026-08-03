@@ -22,7 +22,7 @@ class HomeDashboard extends ConsumerWidget {
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.55,
-          minChildSize: 0.3,
+          minChildSize: 0.4, // Slightly larger minimum
           maxChildSize: 0.9,
           builder: (context, scrollController) {
             return Container(
@@ -32,120 +32,168 @@ class HomeDashboard extends ConsumerWidget {
                   top: Radius.circular(24),
                 ),
               ),
-              // Use a Column to separate the scrollable list from the fixed footer
               child: Column(
                 children: [
-                  // 1. Drag Handle (Fixed at top)
+                  // 1. Drag Handle
                   const SizedBox(height: 12),
                   Container(
-                    height: 4,
-                    width: 40,
+                    height: 5,
+                    width: 48,
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
 
-                  // 2. Scrollable Content
+                  // 2. Scrollable Content with Fading Edge
                   Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      children: [
-                        const SizedBox(height: 12),
-                        // Brand Logo
-                        Center(
-                          child: SvgPicture.asset(
-                            'assets/images/WorkFloow_text.svg',
-                            height: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-
-                        // User Profile Section
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 28,
-                                backgroundColor: Colors.black.withOpacity(0.05),
-                                child: Text(
-                                  isAdmin ? "A" : "U",
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
+                    child: ShaderMask(
+                      shaderCallback: (Rect bounds) {
+                        return LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white, // Fully opaque
+                            Colors.white, // Fully opaque
+                            Colors.white.withOpacity(0.05), // Faded out
+                          ],
+                          stops: const [
+                            0.0,
+                            0.85,
+                            1.0,
+                          ], // Fade happens in the last 15%
+                        ).createShader(bounds);
+                      },
+                      blendMode: BlendMode.dstIn,
+                      child: RawScrollbar(
+                        controller: scrollController,
+                        thumbColor: Colors.black26,
+                        radius: const Radius.circular(8),
+                        thickness: 4,
+                        thumbVisibility: true, // Forces scrollbar to be visible
+                        child: ListView(
+                          controller: scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          children: [
+                            const SizedBox(height: 16),
+                            // Brand Logo
+                            Center(
+                              child: SvgPicture.asset(
+                                'assets/images/WorkFloow_text.svg',
+                                height: 28,
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      isAdmin ? "Administrator" : "Username",
+                            ),
+                            const SizedBox(height: 32),
+
+                            // User Profile Section
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 28,
+                                    backgroundColor: Colors.black.withOpacity(
+                                      0.05,
+                                    ),
+                                    child: Text(
+                                      isAdmin ? "A" : "U",
                                       style: const TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 22,
                                         fontWeight: FontWeight.bold,
+                                        color: Colors.black,
                                       ),
                                     ),
-                                    Text(
-                                      "User of WorkFloow",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isAdmin
+                                              ? "Administrator"
+                                              : "Username",
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        Text(
+                                          "User of WorkFloow",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Category Header: Workspace
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 8,
+                                bottom: 8,
+                              ),
+                              child: Text(
+                                "WORKSPACE",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey.shade500,
+                                  letterSpacing: 1.2,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        const Divider(),
+                            ),
 
-                        // Navigation Menu Items
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.task_alt,
-                          title: 'My Tasks',
-                          isSelected: true,
-                          onTap: () => Navigator.pop(context),
+                            // Navigation Menu Items
+                            _buildMenuItem(
+                              context: context,
+                              icon: Icons.task_alt,
+                              title: 'My Tasks',
+                              isSelected: true,
+                              onTap: () => Navigator.pop(context),
+                            ),
+                            _buildMenuItem(
+                              context: context,
+                              icon: Icons.analytics_outlined,
+                              title: 'Task Overview',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.push('/task-stats');
+                              },
+                            ),
+                            _buildMenuItem(
+                              context: context,
+                              icon: Icons.inventory_2_outlined,
+                              title: 'My Assets',
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.push('/my-assets');
+                              },
+                            ),
+
+                            // You can add more mock items here to test the scroll!
+                            const SizedBox(
+                              height: 40,
+                            ), // Extra padding at bottom for the fade
+                          ],
                         ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.analytics_outlined,
-                          title: 'Task Overview',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.push('/task-stats');
-                          },
-                        ),
-                        _buildMenuItem(
-                          context: context,
-                          icon: Icons.inventory_2_outlined,
-                          title: 'My Assets',
-                          onTap: () {
-                            Navigator.pop(context);
-                            context.push('/my-assets');
-                          },
-                        ), // Add more items here... they will scroll!
-                      ],
+                      ),
                     ),
                   ),
 
                   // 3. Fixed Footer (Logout)
                   const Divider(height: 1),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      16,
-                      12,
-                      16,
-                      32,
-                    ), // Large bottom padding for safe area
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
                     child: _buildMenuItem(
                       context: context,
                       icon: Icons.logout_rounded,
