@@ -101,6 +101,11 @@ jobs:
           echo 'SOME_API_KEY=${{ secrets.DEV_SOME_API_KEY }}' >> env/.env.dev
           echo 'GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}' >> env/.env.dev
 
+      - name: Inject API Key to iOS xcconfig
+        run: |
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}" >> ios/Flutter/Release.xcconfig
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.DEV_GOOGLE_MAPS_API_KEY }}" >> ios/Flutter/Debug.xcconfig
+          
       - name: Build iOS App (No Codesign)
         # This compiles the ARM64 binary required for real devices
         run: flutter build ios --release --no-codesign --dart-define-from-file=env/.env.dev
