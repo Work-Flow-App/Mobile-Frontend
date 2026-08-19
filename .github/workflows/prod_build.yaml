@@ -92,16 +92,16 @@ jobs:
           channel: 'stable'
 
       # - name: Install CocoaPods
-        # run: sudo gem install cocoapods
+      # run: sudo gem install cocoapods
 
       - name: Install Dependencies
         run: flutter pub get
 
       # - name: Install Pods
-        # run: |
-          # cd ios
-          # pod install
-          # cd ..
+      # run: |
+      # cd ios
+      # pod install
+      # cd ..
       - name: Create .env.prod file
         run: |
           mkdir -p env
@@ -163,6 +163,18 @@ jobs:
           </dict>
           </plist>
           EOF
+
+      - name: Configure Manual Code Signing
+        run: |
+          # 1. Force Xcode to use Manual Signing instead of Automatic
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+
+          # 2. Force Xcode to use your Distribution Certificate instead of Development
+          sed -i '' 's/iPhone Developer/Apple Distribution/g' ios/Runner.xcodeproj/project.pbxproj
+
+          # 3. Inject your Team ID and Profile into the build config
+          echo "PROVISIONING_PROFILE_SPECIFIER=${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}" >> ios/Flutter/Release.xcconfig
+          echo "DEVELOPMENT_TEAM=${{ secrets.IOS_TEAM_ID }}" >> ios/Flutter/Release.xcconfig
 
       - name: Build iOS App (IPA)
         run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
