@@ -1,0 +1,175 @@
+name: Production Build
+
+on:
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+jobs:
+  # Job 1: Static analysis and verification
+  verify:
+    name: Analyze Code
+    runs-on: ubuntu-latest
+    # ... (Keep your existing verify steps exactly as they are) ...
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Dependencies
+        run: flutter pub get
+      - name: Analyze Flutter Code
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+  # Job 2: Build and Sign the AAB and APK
+  build_release:
+    name: Build Prod Android
+    needs: verify
+    runs-on: ubuntu-latest
+    # ... (Keep your existing Android build steps exactly as they are) ...
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Install Dependencies
+        run: flutter pub get
+      - name: Create .env.prod file
+        run: |
+          mkdir -p env
+          echo 'BASE_URL=${{ secrets.PROD_BASE_URL }}' >> env/.env.prod
+          echo 'SOME_API_KEY=${{ secrets.PROD_SOME_API_KEY }}' >> env/.env.prod
+          echo 'GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}' >> env/.env.prod
+      - name: Setup Android Keystore
+        run: |
+          echo '${{ secrets.KEYSTORE_BASE64 }}' | base64 --decode > android/app/keystore.jks
+          echo 'storeFile=keystore.jks' > android/key.properties
+          echo 'storePassword=${{ secrets.KEYSTORE_PASSWORD }}' >> android/key.properties
+          echo 'keyPassword=${{ secrets.KEY_PASSWORD }}' >> android/key.properties
+          echo 'keyAlias=${{ secrets.KEY_ALIAS }}' >> android/key.properties
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release --dart-define-from-file=env/.env.prod
+      - name: Build APK (For Testing)
+        run: flutter build apk --release --dart-define-from-file=env/.env.prod
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+  # Job 3: Build and Sign the iOS App
+  build_ios_prod:
+    name: Build Prod iOS
+    needs: verify
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Install Pods
+        run: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Create .env.prod file
+        run: |
+          mkdir -p env
+          echo 'BASE_URL=${{ secrets.PROD_BASE_URL }}' >> env/.env.prod
+          echo 'SOME_API_KEY=${{ secrets.PROD_SOME_API_KEY }}' >> env/.env.prod
+          echo 'GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}' >> env/.env.prod
+
+      - name: Inject API Key to iOS xcconfig
+        run: |
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}" >> ios/Flutter/Release.xcconfig
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}" >> ios/Flutter/Debug.xcconfig
+
+      - name: Install Apple Certificate and Provisioning Profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables for paths
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Decode the Base64 secrets into files
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+          # Create a temporary keychain on the CI runner
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to the keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+          # Apply the provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Create ExportOptions.plist
+        run: |
+          cat <<EOF > ios/ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.IOS_TEAM_ID }}</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.workfloow.app</key>
+                  <string>${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Build iOS App (IPA)
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-ios
+          path: build/ios/ipa/*.ipa

@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/signup_screen.dart';
-import 'screens/dashboard/responsive_dashboard.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_frontend/routes/app_router.dart';
+import 'package:mobile_frontend/theme/app_theme.dart'; // Your theme file
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
       title: 'Workflow App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primaryColor: Colors.black,
-        brightness: Brightness.light,
-      ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (_) => const LoginScreen(),
-        '/signup': (_) => const SignupScreen(),
-        '/dashboard': (_) => const ResponsiveDashboard(),
-      },
+      theme: AppTheme.lightTheme,
+      
+      // Connect GoRouter
+      routerConfig: router,
     );
   }
 }
