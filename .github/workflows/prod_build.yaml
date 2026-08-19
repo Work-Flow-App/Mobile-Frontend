@@ -63,9 +63,11 @@ jobs:
           echo 'keyPassword=${{ secrets.KEY_PASSWORD }}' >> android/key.properties
           echo 'keyAlias=${{ secrets.KEY_ALIAS }}' >> android/key.properties
       - name: Build App Bundle (AAB)
-        run: flutter build appbundle --release --dart-define-from-file=env/.env.prod
+        run: flutter build appbundle --release --build-number=$GITHUB_RUN_NUMBER --dart-define-from-file=env/.env.prod
+
       - name: Build APK (For Testing)
-        run: flutter build apk --release --dart-define-from-file=env/.env.prod
+        run: flutter build apk --release --build-number=$GITHUB_RUN_NUMBER --dart-define-from-file=env/.env.prod
+
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -177,10 +179,18 @@ jobs:
           echo "DEVELOPMENT_TEAM=${{ secrets.IOS_TEAM_ID }}" >> ios/Flutter/Release.xcconfig
 
       - name: Build iOS App (IPA)
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
+        run: flutter build ipa --release --build-number=$GITHUB_RUN_NUMBER --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
 
       - name: Upload iOS Artifact
         uses: actions/upload-artifact@v4
         with:
           name: production-ios
           path: build/ios/ipa/*.ipa
+
+      - name: Upload App to Apple TestFlight
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID_EMAIL }}
+          APP_PWD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          echo "Uploading IPA to App Store Connect..."
+          xcrun altool --upload-app -f build/ios/ipa/*.ipa -t ios -u "$APPLE_ID" -p "$APP_PWD"
