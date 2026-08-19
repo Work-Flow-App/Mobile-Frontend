@@ -77,8 +77,9 @@ jobs:
           name: production-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-  build_ios_dummy:
-    name: Dummy iOS Build
+  # Job 3: Build and Sign the iOS App
+  build_ios_prod:
+    name: Build Prod iOS
     needs: verify
     runs-on: macos-latest
     steps:
@@ -90,84 +91,85 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Install CocoaPods
+        run: sudo gem install cocoapods
+
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Dummy iOS Step
-        run: echo "iOS build skipped (no Apple account configured)"
+      - name: Install Pods
+        run: |
+          cd ios
+          pod install
+          cd ..
 
-      - name: Mark Success
-        run: echo "Dummy iOS job completed successfully"
+      - name: Create .env.prod file
+        run: |
+          mkdir -p env
+          echo 'BASE_URL=${{ secrets.PROD_BASE_URL }}' >> env/.env.prod
+          echo 'SOME_API_KEY=${{ secrets.PROD_SOME_API_KEY }}' >> env/.env.prod
+          echo 'GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}' >> env/.env.prod
 
-  # # Job 3: Build and Sign the iOS IPA
-  # build_ios_release:
-  #   name: Build Prod iOS IPA
-  #   needs: verify
-  #   runs-on: macos-latest
+      - name: Inject API Key to iOS xcconfig
+        run: |
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}" >> ios/Flutter/Release.xcconfig
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}" >> ios/Flutter/Debug.xcconfig
 
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
+      - name: Install Apple Certificate and Provisioning Profile
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables for paths
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
-  #     - name: Setup Flutter
-  #       uses: subosito/flutter-action@v2
-  #       with:
-  #         channel: 'stable'
-  #
-  #     - name: Install CocoaPods
-  #       run: sudo gem install cocoapods
+          # Decode the Base64 secrets into files
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
-  #     - name: Install Dependencies
-  #       run: flutter pub get
+          # Create a temporary keychain on the CI runner
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
 
-  #     - name: Install iOS Pods
-  #       run: |
-  #         cd ios
-  #         pod install
-  #         cd ..
+          # Import certificate to the keychain
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
 
-  #     - name: Create .env.prod file
-  #       run: |
-  #         mkdir -p env
-  #         echo 'BASE_URL=${{ secrets.PROD_BASE_URL }}' >> env/.env.prod
-  #         echo 'SOME_API_KEY=${{ secrets.PROD_SOME_API_KEY }}' >> env/.env.prod
-  #         echo 'GOOGLE_MAPS_API_KEY=${{ secrets.PROD_GOOGLE_MAPS_API_KEY }}' >> env/.env.prod
+          # Apply the provisioning profile
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
 
-  #     - name: Install Apple Certificate and Provisioning Profile
-  #       env:
-  #         BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
-  #         P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-  #         BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_BUILD_PROVISION_PROFILE_BASE64 }}
-  #         KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
-  #       run: |
-  #         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-  #         PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-  #         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+      - name: Create ExportOptions.plist
+        run: |
+          cat <<EOF > ios/ExportOptions.plist
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.IOS_TEAM_ID }}</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.workfloow.app</key>
+                  <string>${{ secrets.IOS_PROVISIONING_PROFILE_NAME }}</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
 
-  #         echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-  #         echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+      - name: Build iOS App (IPA)
+        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
 
-  #         security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-  #         security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-  #         security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-  #         security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-  #         security list-keychain -d user -s $KEYCHAIN_PATH
-
-  #         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-  #         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
-
-  #     - name: Build IPA
-  #       run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist --dart-define-from-file=env/.env.prod
-
-  #     - name: Clean up Keychain and Profile
-  #       if: ${{ always() }}
-  #       run: |
-  #         security delete-keychain $RUNNER_TEMP/app-signing.keychain-db
-  #         rm -f ~/Library/MobileDevice/Provisioning\ Profiles/build_pp.mobileprovision
-
-  #     - name: Upload IPA Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: production-ipa
-  #         path: build/ios/ipa/*.ipa
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-ios
+          path: build/ios/ipa/*.ipa
