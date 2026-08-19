@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/widgets/brand_logo.dart';
-import 'package:mobile_frontend/widgets/persistent_text_field.dart'; // <-- Imported the new reusable widget
+import 'package:mobile_frontend/widgets/persistent_text_field.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +13,6 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-// Removed the WidgetsBindingObserver mixin, keeping it clean
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
@@ -23,7 +22,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
-    // Only need to dispose of the controllers now
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -94,108 +92,119 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                             child: SafeArea(
                               top: false,
-                              child: Column(
-                                children: [
-                                  const Text(
-                                    "Welcome Back!",
-                                    style: TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
+                              // Added Center and ConstrainedBox here for tablet support
+                              child: Center(
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    maxWidth: 450,
                                   ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    "Enter your valid username and password\nto access your account.",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 40),
-
-                                  // Username Field
-                                  _buildTextField(
-                                    label: "Username",
-                                    hint: "username",
-                                    controller: usernameController,
-                                    enabled: !isLoading,
-                                  ),
-                                  const SizedBox(height: 20),
-
-                                  // Password Field with Toggle logic
-                                  _buildTextField(
-                                    label: "Password",
-                                    hint: "••••••••••••",
-                                    controller: passwordController,
-                                    enabled: !isLoading,
-                                    isPassword: true,
-                                    obscureText: _obscurePassword,
-                                    onToggleVisibility: () {
-                                      setState(() {
-                                        _obscurePassword = !_obscurePassword;
-                                      });
-                                    },
-                                  ),
-
-                                  const SizedBox(height: 30),
-
-                                  // Login Button
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 55,
-                                    child: ElevatedButton(
-                                      onPressed: isLoading
-                                          ? null
-                                          : () {
-                                              // Dismiss keyboard on submit
-                                              FocusScope.of(context).unfocus();
-
-                                              final cleanedUsername =
-                                                  usernameController.text
-                                                      .trim();
-                                              ref
-                                                  .read(
-                                                    authNotifierProvider
-                                                        .notifier,
-                                                  )
-                                                  .login(
-                                                    cleanedUsername,
-                                                    passwordController.text,
-                                                  );
-                                            },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.black,
-                                        foregroundColor: Colors.white,
-                                        disabledBackgroundColor:
-                                            Colors.grey.shade800,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
+                                  child: Column(
+                                    children: [
+                                      const Text(
+                                        "Welcome Back!",
+                                        style: TextStyle(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
                                         ),
                                       ),
-                                      child: isLoading
-                                          ? const SizedBox(
-                                              height: 20,
-                                              width: 20,
-                                              child: CircularProgressIndicator(
-                                                color: Colors.white,
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Text(
-                                              "Log in",
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        "Enter your valid username and password\nto access your account.",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 40),
+
+                                      // Username Field
+                                      _buildTextField(
+                                        label: "Username",
+                                        hint: "username",
+                                        controller: usernameController,
+                                        enabled: !isLoading,
+                                      ),
+                                      const SizedBox(height: 20),
+
+                                      // Password Field with Toggle logic
+                                      _buildTextField(
+                                        label: "Password",
+                                        hint: "••••••••••••",
+                                        controller: passwordController,
+                                        enabled: !isLoading,
+                                        isPassword: true,
+                                        obscureText: _obscurePassword,
+                                        onToggleVisibility: () {
+                                          setState(() {
+                                            _obscurePassword =
+                                                !_obscurePassword;
+                                          });
+                                        },
+                                      ),
+
+                                      const SizedBox(height: 30),
+
+                                      // Login Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 55,
+                                        child: ElevatedButton(
+                                          onPressed: isLoading
+                                              ? null
+                                              : () {
+                                                  // Dismiss keyboard on submit
+                                                  FocusScope.of(
+                                                    context,
+                                                  ).unfocus();
+
+                                                  final cleanedUsername =
+                                                      usernameController.text
+                                                          .trim();
+                                                  ref
+                                                      .read(
+                                                        authNotifierProvider
+                                                            .notifier,
+                                                      )
+                                                      .login(
+                                                        cleanedUsername,
+                                                        passwordController.text,
+                                                      );
+                                                },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.black,
+                                            foregroundColor: Colors.white,
+                                            disabledBackgroundColor:
+                                                Colors.grey.shade800,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
                                             ),
-                                    ),
+                                          ),
+                                          child: isLoading
+                                              ? const SizedBox(
+                                                  height: 20,
+                                                  width: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Colors.white,
+                                                        strokeWidth: 2,
+                                                      ),
+                                                )
+                                              : const Text(
+                                                  "Log in",
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                    ],
                                   ),
-                                  const SizedBox(height: 20),
-                                ],
+                                ),
                               ),
                             ),
                           ),
