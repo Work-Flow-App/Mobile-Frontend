@@ -31,6 +31,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final AuthState authState = ref.watch(authNotifierProvider);
 
+    // Get the total screen size to make the layout proportional on big screens
+    final size = MediaQuery.of(context).size;
+
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next.status == AuthStatus.unauthenticated &&
           next.errorMessage != null) {
@@ -55,166 +58,156 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         backgroundColor: const Color(0xFF121212),
         body: SafeArea(
           bottom: false,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 50.0),
-                          child: const Center(
-                            child: BrandLogo(
-                              isAppBar: false,
-                              iconSize: 65,
-                              textSvgWidth: 250,
-                              axis: Axis.vertical,
-                            ),
-                          ),
-                        ),
+          child: CustomScrollView(
+            slivers: [
+              // --- TOP BLACK AREA ---
+              SliverToBoxAdapter(
+                child: Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(
+                    // Ensures it doesn't squish too much on landscape phones
+                    minHeight: 220,
+                  ),
+                  // Dynamically takes up 35% of the total screen height
+                  height: size.height * 0.35,
+                  alignment: Alignment.center,
+                  child: const BrandLogo(
+                    isAppBar: false,
+                    iconSize: 65,
+                    textSvgWidth: 250,
+                    axis: Axis.vertical,
+                  ),
+                ),
+              ),
 
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(40),
-                                topRight: Radius.circular(40),
+              // --- BOTTOM WHITE AREA ---
+              SliverFillRemaining(
+                hasScrollBody:
+                    false, // Fills remaining space, but scrolls if keyboard opens
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(40),
+                      topRight: Radius.circular(40),
+                    ),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 40,
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    // Changed Center to Align topCenter so the form stays pinned to
+                    // the top curve on large tablets rather than floating in the middle
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 450),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              "Welcome Back!",
+                              style: TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
                               ),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 40,
+                            const SizedBox(height: 8),
+                            const Text(
+                              "Enter your valid username and password\nto access your account.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 14,
+                              ),
                             ),
-                            child: SafeArea(
-                              top: false,
-                              // Added Center and ConstrainedBox here for tablet support
-                              child: Center(
-                                child: ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 450,
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      const Text(
-                                        "Welcome Back!",
-                                        style: TextStyle(
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        "Enter your valid username and password\nto access your account.",
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.grey,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 40),
+                            const SizedBox(height: 40),
 
-                                      // Username Field
-                                      _buildTextField(
-                                        label: "Username",
-                                        hint: "username",
-                                        controller: usernameController,
-                                        enabled: !isLoading,
-                                      ),
-                                      const SizedBox(height: 20),
+                            // Username Field
+                            _buildTextField(
+                              label: "Username",
+                              hint: "username",
+                              controller: usernameController,
+                              enabled: !isLoading,
+                            ),
+                            const SizedBox(height: 20),
 
-                                      // Password Field with Toggle logic
-                                      _buildTextField(
-                                        label: "Password",
-                                        hint: "••••••••••••",
-                                        controller: passwordController,
-                                        enabled: !isLoading,
-                                        isPassword: true,
-                                        obscureText: _obscurePassword,
-                                        onToggleVisibility: () {
-                                          setState(() {
-                                            _obscurePassword =
-                                                !_obscurePassword;
-                                          });
-                                        },
-                                      ),
+                            // Password Field with Toggle logic
+                            _buildTextField(
+                              label: "Password",
+                              hint: "••••••••••••",
+                              controller: passwordController,
+                              enabled: !isLoading,
+                              isPassword: true,
+                              obscureText: _obscurePassword,
+                              onToggleVisibility: () {
+                                setState(() {
+                                  _obscurePassword = !_obscurePassword;
+                                });
+                              },
+                            ),
 
-                                      const SizedBox(height: 30),
+                            const SizedBox(height: 30),
 
-                                      // Login Button
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 55,
-                                        child: ElevatedButton(
-                                          onPressed: isLoading
-                                              ? null
-                                              : () {
-                                                  // Dismiss keyboard on submit
-                                                  FocusScope.of(
-                                                    context,
-                                                  ).unfocus();
+                            // Login Button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 55,
+                              child: ElevatedButton(
+                                onPressed: isLoading
+                                    ? null
+                                    : () {
+                                        // Dismiss keyboard on submit
+                                        FocusScope.of(context).unfocus();
 
-                                                  final cleanedUsername =
-                                                      usernameController.text
-                                                          .trim();
-                                                  ref
-                                                      .read(
-                                                        authNotifierProvider
-                                                            .notifier,
-                                                      )
-                                                      .login(
-                                                        cleanedUsername,
-                                                        passwordController.text,
-                                                      );
-                                                },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.black,
-                                            foregroundColor: Colors.white,
-                                            disabledBackgroundColor:
-                                                Colors.grey.shade800,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                          child: isLoading
-                                              ? const SizedBox(
-                                                  height: 20,
-                                                  width: 20,
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                        color: Colors.white,
-                                                        strokeWidth: 2,
-                                                      ),
-                                                )
-                                              : const Text(
-                                                  "Log in",
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                    ],
+                                        final cleanedUsername =
+                                            usernameController.text.trim();
+                                        ref
+                                            .read(authNotifierProvider.notifier)
+                                            .login(
+                                              cleanedUsername,
+                                              passwordController.text,
+                                            );
+                                      },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black,
+                                  foregroundColor: Colors.white,
+                                  disabledBackgroundColor: Colors.grey.shade800,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
+                                child: isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        "Log in",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
-                          ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),
@@ -242,8 +235,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         const SizedBox(height: 8),
-
-        // Using the new wrapper widget instead of standard TextField
         PersistentTextField(
           controller: controller,
           enabled: enabled,
