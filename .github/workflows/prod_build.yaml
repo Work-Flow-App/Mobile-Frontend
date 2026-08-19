@@ -91,18 +91,17 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Install CocoaPods
-        run: sudo gem install cocoapods
+      # - name: Install CocoaPods
+        # run: sudo gem install cocoapods
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Install Pods
-        run: |
-          cd ios
-          pod install
-          cd ..
-
+      # - name: Install Pods
+        # run: |
+          # cd ios
+          # pod install
+          # cd ..
       - name: Create .env.prod file
         run: |
           mkdir -p env
