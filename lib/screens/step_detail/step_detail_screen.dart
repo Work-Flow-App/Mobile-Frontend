@@ -1035,20 +1035,34 @@ class _AttachmentUploadSheetState extends State<_AttachmentUploadSheet> {
 
   Future<void> _pickFile(int type) async {
     String? path;
-    if (type == 0 || type == 1) {
-      final img = await ImagePicker().pickImage(
-        source: type == 0 ? ImageSource.camera : ImageSource.gallery,
-        imageQuality: 70,
-        maxWidth: 1920,
-      );
-      path = img?.path;
-    } else {
-      final res = await FilePicker.platform.pickFiles();
-      path = res?.files.single.path;
-    }
+    try {
+      if (type == 0 || type == 1) {
+        final img = await ImagePicker().pickImage(
+          source: type == 0 ? ImageSource.camera : ImageSource.gallery,
+          imageQuality: 70,
+          maxWidth: 1920,
+        );
+        path = img?.path;
+      } else {
+        final res = await FilePicker.platform.pickFiles();
+        if (res != null && res.files.isNotEmpty) {
+          path = res.files.single.path;
+        }
+      }
 
-    if (path != null) {
-      setState(() => _selectedPath = path);
+      if (path != null) {
+        setState(() => _selectedPath = path);
+      }
+    } catch (e) {
+      // Catch permission errors or camera unavailability
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error picking file: $e"),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
     }
   }
 
