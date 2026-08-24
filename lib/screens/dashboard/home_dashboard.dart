@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_frontend/models/auth/auth_state.dart';
 import 'package:mobile_frontend/providers/auth/auth_notifier.dart';
 import 'package:mobile_frontend/providers/job/job_provider.dart';
 import 'package:mobile_frontend/screens/step_detail/step_detail_screen.dart';
@@ -13,7 +14,13 @@ import 'package:go_router/go_router.dart';
 class HomeDashboard extends ConsumerWidget {
   const HomeDashboard({super.key});
 
-  void _showMenuBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
+  void _showMenuBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    AuthState authState,
+  ) {
+    final isAdmin = authState.role == 'ADMIN';
+    final username = authState.username ?? "User";
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -113,16 +120,14 @@ class HomeDashboard extends ConsumerWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          isAdmin
-                                              ? "Administrator"
-                                              : "Username",
+                                          isAdmin ? "Administrator" : "Staff",
                                           style: const TextStyle(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                         Text(
-                                          "User of WorkFloow",
+                                          username,
                                           style: TextStyle(
                                             fontSize: 14,
                                             color: Colors.grey[600],
@@ -259,7 +264,6 @@ class HomeDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stepsAsync = ref.watch(assignedStepsFutureProvider);
     final authState = ref.watch(authNotifierProvider);
-    final isAdmin = authState.role == 'ADMIN';
 
     return Scaffold(
       // 1. Position the FAB at the bottom left
@@ -268,7 +272,7 @@ class HomeDashboard extends ConsumerWidget {
       // 2. Add the FAB
       floatingActionButton: FloatingActionButton(
         mini: true,
-        onPressed: () => _showMenuBottomSheet(context, ref, isAdmin),
+        onPressed: () => _showMenuBottomSheet(context, ref, authState),
         backgroundColor: Colors.black, // Match your app branding
         foregroundColor: Colors.white,
         elevation: 4,
