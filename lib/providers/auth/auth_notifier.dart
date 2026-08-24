@@ -35,7 +35,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         await logout();
         return;
       }
-      state = state.copyWith(status: AuthStatus.authenticated, role: role);
+
+      Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+      String username = decodedToken['sub'] ?? 'User';
+
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        role: role,
+        username: username,
+      );
     } else {
       state = state.copyWith(status: AuthStatus.unauthenticated);
     }
@@ -60,6 +68,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       // "ROLE_ADMIN"  -> "ADMIN"
       String normalizedRole = rawRole.replaceFirst('ROLE_', '');
 
+      String tokenUsername = decodedToken['sub'] ?? username;
+
       // 4. Save to Secure Storage
       await _storage.saveAuthData(
         accessToken: response.accessToken,
@@ -73,6 +83,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         status: AuthStatus.authenticated,
         role: normalizedRole,
+        username: tokenUsername,
       );
     } catch (e) {
       state = state.copyWith(
@@ -100,7 +111,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       _clearJobCache();
 
-      state = state.copyWith(status: AuthStatus.authenticated, role: role);
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        role: role,
+        username: username,
+      );
     } catch (e) {
       state = state.copyWith(
         status: AuthStatus.unauthenticated,
@@ -114,7 +129,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     _clearJobCache();
 
-    state = state.copyWith(status: AuthStatus.unauthenticated, role: null);
+    state = const AuthState(status: AuthStatus.unauthenticated);
   }
 
   void _clearJobCache() {
